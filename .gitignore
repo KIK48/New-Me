@@ -1,0 +1,21 @@
+# node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# build outputs
+dist/
+build/
+
+# env
+.env
+.env.local
+
+# prisma
+*.db
+*.db-journal
+
+# OS
+.DS_Store
+Thumbs.db

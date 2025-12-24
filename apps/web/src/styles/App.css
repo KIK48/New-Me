@@ -1,42 +1,85 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #000603;
+}
+
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  height: 100vh;
+  background: #000603;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.application {
+  display: grid;
+  background: #000603;
+  width: auto;
+  height:100vh;
+  padding: 50px;
+  row-gap: 40px;
+  column-gap: 40px;
+  grid-template-rows: repeat(12, minmax(0, 1fr));
+  grid-template-columns: repeat(16, minmax(0, 1fr));
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.Nav {
+  display: inline-flex;
+  padding-top: 66px;
+  flex: 0 0 auto;
+  
+  flex-direction: column;
+  align-items: center;
+  row-gap: 80px;
+
+  align-self: stretch;
+  grid-row: 1 / span 12;
+  grid-column: 1 / span 4;
+  justify-self: stretch;
 }
 
-.card {
-  padding: 2em;
+.Nav li {
+  color: #98EAFF;
+
+  font-family:Arial, Helvetica, sans-serif;
+  font-size: 64px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 50px; /* 78.125% */
+  list-style: none;
+  /*-webkit-text-stroke: 1px rgba(255, 255, 255, 0.6);/**/
+ 
 }
 
-.read-the-docs {
-  color: #888;
+.Nav li:hover {
+  
+  text-shadow:
+    0 2px 6px rgb(0, 0, 0),
+    0 0 50px rgba(152, 255, 252, 0.4);
 }
+
+.content {
+  flex: 1;
+  min-width: 0; 
+}
+
+
+.Home {
+  display: grid;
+  width: 1355px;
+  height: 980px;
+  padding: 40px;
+  row-gap: 10px;
+  column-gap: 10px;
+  align-self: end;
+  grid-template-rows: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-row: 1 / span 12;
+  grid-column: 5 / span 12;
+
+  transition: background-color 0.8s ease-in-out 0.1s, box-shadow 0.8s ease-in-out 0.1s;
+}
+
+.Home:focus {
+  box-shadow: 0 -8px 12px 0 #085331, -8px 0 12px 0 #085331, 0 8px 12px 0 #085331, 8px 0 12px 0 #085331;
+  background-color: rgba(8, 83, 49, 0.40);
+}
+

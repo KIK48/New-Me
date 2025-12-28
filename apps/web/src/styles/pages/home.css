@@ -1,0 +1,55 @@
+.Home {
+  display: grid;/**/
+
+  /*padding: 40px; /**/
+  /*row-gap: 10px; /**/
+  /*column-gap: 10px; /**/
+
+  gap: 2vh 2vw;
+
+  grid-template-rows: repeat(8, minmax(0, 1fr)); /**/
+  grid-template-columns: repeat(12, minmax(0, 1fr)); /**/
+
+
+  height: 100%;
+  width: 100%;
+
+  /*background-color: red;/**/
+}
+
+.Habits-Created {
+
+  grid-row-start: 1;
+  grid-row-end: 4;
+  grid-column-start: 1;
+  grid-column-end: 5;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.Best-Habit {
+
+  grid-row-start: 1;
+  grid-row-end: 4;
+  grid-column-start: 5;
+  grid-column-end: 9;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.Progress-Week {
+
+  grid-row-start: 1;
+  grid-row-end: 4;
+  grid-column-start: 9;
+  grid-column-end: 13;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+

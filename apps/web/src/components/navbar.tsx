@@ -1,6 +1,6 @@
 
-
-//import './styles/App.css' // change
+import { NavLink } from 'react-router-dom';
+import '../styles/components/navbar.css' // change
 
 export default function Navbar() {
   
@@ -8,8 +8,19 @@ export default function Navbar() {
   return (
     <div className='Nav focus-glow container' tabIndex={0}>
       
-        <li>Home</li>
-        <li>Weekly</li>
+        <NavLink
+          to="/"
+          end
+          className={({ isActive }) => `navItem letters ${isActive ? "active" : ""}`}
+        >
+          Home
+        </NavLink>
+        <NavLink
+          to="/weekly"
+          className={({ isActive }) => `navItem letters ${isActive ? "active" : ""}`}
+        >
+          Weekly
+        </NavLink>
       
     </div>
   );

@@ -66,12 +66,7 @@
   color: white;
 }
 
-.info-displayer {
-  width: 95%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+
 
 h2 {
   margin-left: 2vw;
@@ -97,11 +92,28 @@ h2 {
 
 }
 
+#top {
+  width: 95%;
+  background-color: black;
+  
+}
+
+#info {
+  border: none;
+  box-shadow: none;
+}
+
+.day { /* I am using this even tho it overflows so that it aligns with the boxes on the bottom*/
+  height: 30%;
+  width: 26px;
+  
+}
+
 .strip.Title-Habit{
   display: flex;
   height: 100%;
   width: 10%;
-  
+
 
   justify-content: center;
   align-items: center;
@@ -109,14 +121,27 @@ h2 {
   box-shadow: -6px 6px 4px 0px rgba(0, 0, 0, 0.25);
 }
 
-.strip.Boxes-Habit {
+.strip .Boxes-Habit {
   display: flex;
   height:55px;
   width: 89%;
   margin-left: 1%;
-
-  justify-content: center;
-  align-items: center;
+  margin-bottom: none;
+  gap: 10px;
 
   box-shadow: -6px 6px 4px 0px rgba(0, 0, 0, 0.25);
+  align-items: center;
+  justify-content: space-evenly;
+}
+
+.box-selector {
+  height:25px;
+  width: 25px;
+
+  background: rgb(0, 0, 0);
+  border-radius: 5px;
+}
+
+.icon-onBox {
+  height: 100%;
 }

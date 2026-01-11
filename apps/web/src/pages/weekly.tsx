@@ -34,12 +34,34 @@ export default function Weekly() {
         <div className='date strip strip--info letters'>1/11/2026</div>
       </div>
 
-      <div className='info-displayer strip strip--info letters'>
-        Habit Mon Tues Wed Thurs Fri Sat Sun
+      <div className='Habit strip' id='top'> {/** Here this should be a strip but invisible if it makes sense **/}
+        <div className='Title-Habit strip strip--info letters' id='info'>Habit</div> {/** This should be the title saying habit **/}
+        <div className='Boxes-Habit strip strip--info letters' id='info'> {/** This should be the days **/}
+          <div className='day'>Mon</div>
+          <div className='day'>Tue</div>
+          <div className='day'>Wed</div>
+          <div className='day'>Thurs</div>
+          <div className='day'>Fri</div>
+          <div className='day'>Sat</div>
+          <div className='day'>Sun</div>
+        </div> 
+
       </div>
       <div className='habits'>
         <div className='Habit strip'>
           <div className='Title-Habit strip letters'>Gym</div>
+          <div className='Boxes-Habit strip'>
+            <div className='box-selector'><img src='Check square.svg' className='icon-onBox'></img></div>
+            <div className='box-selector'><img src='X square.svg' className='icon-onBox'></img></div>
+            <div className='box-selector'></div>
+            <div className='box-selector'></div>
+            <div className='box-selector'></div>
+            <div className='box-selector'></div>
+            <div className='box-selector'></div>
+          </div>
+        </div>
+        <div className='Habit strip'>
+          <div className='Title-Habit strip letters'>Leet</div>
           <div className='Boxes-Habit strip'>
             <div className='box-selector'></div>
             <div className='box-selector'></div>
@@ -51,12 +73,16 @@ export default function Weekly() {
           </div>
         </div>
         <div className='Habit strip'>
-          <div className='Title-Habit strip letters'>Leet</div>
-          <div className='Boxes-Habit strip'></div>
-        </div>
-        <div className='Habit strip'>
           <div className='Title-Habit strip letters'>Clean Room</div>
-          <div className='Boxes-Habit strip'></div>
+          <div className='Boxes-Habit strip'>
+            <div className='box-selector'></div>
+            <div className='box-selector'></div>
+            <div className='box-selector'></div>
+            <div className='box-selector'></div>
+            <div className='box-selector'></div>
+            <div className='box-selector'></div>
+            <div className='box-selector'></div>
+          </div>
         </div>
       </div>
     </div>

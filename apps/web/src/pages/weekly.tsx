@@ -5,7 +5,7 @@ import '../styles/pages/weekly.css' // change
 export default function Weekly() {
   
   return (
-    <div className='Weekly focus-glow container' tabIndex={0}>
+    <div className='Weekly focus-glow container' tabIndex={0}> {/* This is the container for the whole page thingy */}
 
       <div className='top-selector strip'>
         <div className='date strip strip--info letters'>1/5/2026</div>

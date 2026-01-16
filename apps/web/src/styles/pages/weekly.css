@@ -140,8 +140,35 @@ h2 {
 
   background: rgb(0, 0, 0);
   border-radius: 5px;
+  border: none;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+
+  padding: 0;
+
+  opacity: 0.35;
+}
+
+.box-selector.is-yes {
+  opacity: 1;
+}
+
+.box-selector.is-no {
+  opacity: 1;
+}
+
+.box-selector:hover {
+  outline: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .icon-onBox {
+  height: 100%;
+}
+
+.box-icon {
   height: 100%;
 }

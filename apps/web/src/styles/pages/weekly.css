@@ -16,6 +16,8 @@
 }
   */ 
 
+
+
 .Weekly {
 
   display: flex;
@@ -30,6 +32,7 @@
 }
 
 .top-selector  {
+  --btn-size: 2.75rem;
   display: flex;
   width: 95%;
   margin-top: 5vh;
@@ -49,24 +52,59 @@
 
 }
 
-.arrow-btn {
-  height:80%;
-  width: 5%;
+.top-btns {
+  width: var(--btn-size);
+  height: var(--btn-size);
   background-color: black;
   border-radius: 100px;
   border:none;
   color:#1E1E1E;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
 }
 
-.arrow-btn img {
+.Crud-btns {
+  height: 100%;
+  width: 60%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+
+
+}
+
+.top-btns img {
   height: 15px;
 }
 
-.arrow-btn:hover .i-btn {
+.top-btns:hover .arrow-btns {
   color: white;
 }
 
+.top-btns:hover .i-rings {
+  stroke: rgba(255, 255, 255, 0.196);
+}
 
+.top-btns:hover .i-minus {
+  stroke: #860000;
+}
+
+.top-btns:hover .i-changeBtn {
+  stroke: #863600;
+}
+
+.top-btns:hover .i-saveBtn {
+  stroke: #0d0086;
+}
+
+.top-btns:hover .i-add {
+  stroke: #085331;
+}
 
 h2 {
   margin-left: 2vw;

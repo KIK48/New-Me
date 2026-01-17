@@ -3,6 +3,7 @@ import MainLayout from "./layouts/MainLayout";
 import Home from "./pages/home";
 import Weekly from "./pages/weekly"
 
+
 export default function App() {
   return (
     <Routes>

@@ -21,7 +21,7 @@ export default function Navbar() {
         >
           Weekly
         </NavLink>
-      
+  
     </div>
   );
 }

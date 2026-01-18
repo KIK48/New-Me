@@ -94,6 +94,14 @@
   stroke: #860000;
 }
 
+.top-btns.active .i-rings {
+  stroke:white;
+}
+
+.top-btns.active .i-minus {
+  stroke: #860000;
+}
+
 .top-btns:hover .i-changeBtn {
   stroke: #863600;
 }
@@ -153,10 +161,58 @@ h2 {
   width: 10%;
 
 
-  justify-content: center;
+  justify-content: space-around;
   align-items: center;
 
+
   box-shadow: -6px 6px 4px 0px rgba(0, 0, 0, 0.25);
+}
+
+.habit-name {
+  flex: 1;
+  min-width: 0;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  display: flex;
+  justify-content: center;
+}
+
+.habit-name.active {
+  flex: 1;
+  min-width: 0;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  justify-content: end;
+  margin-left: 17px;
+}
+
+.delete-svg-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+.i-delete-tag {
+  height: 1.3rem;
+  width: 2rem;
+  flex-shrink: 0;
+}
+
+.i-delete-jx {
+  stroke: rgb(127, 127, 127);
+  stroke-width: 2;
+}
+
+.i-delete-tag:hover .i-delete-jx{
+  stroke: #860000;
+  stroke-width: 3.5;
 }
 
 .strip .Boxes-Habit {

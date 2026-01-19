@@ -2,10 +2,12 @@ html, body {
   margin: 0;
   padding: 0;
   background: #000603;
+  height: 100%;
+  overflow: hidden;
 }
 
 #root {
-  height: 100vh;
+  min-height: 100vh;
   background: #000603;
 }
 
@@ -19,7 +21,7 @@ html, body {
   display: grid;
   background: #000603;
   width: auto;
-  height: 88vh;
+  height: 100%;
   padding: 2.5vw;
   gap: 9vh 3vw;
   grid-template-rows: repeat(12, minmax(0, 1fr));

@@ -102,6 +102,10 @@
   stroke: #860000;
 }
 
+.top-btns.active .i-changeBtn {
+  stroke: #863600;
+}
+
 .top-btns:hover .i-changeBtn {
   stroke: #863600;
 }
@@ -190,7 +194,7 @@ h2 {
   margin-left: 17px;
 }
 
-.delete-svg-btn {
+.side-btn {
   background: none;
   border: none;
   padding: 0;
@@ -199,7 +203,7 @@ h2 {
   align-items: center;
 }
 
-.i-delete-tag {
+.i-side-svg {
   height: 1.3rem;
   width: 2rem;
   flex-shrink: 0;
@@ -210,9 +214,17 @@ h2 {
   stroke-width: 2;
 }
 
-.i-delete-tag:hover .i-delete-jx{
+.i-side-svg:hover .i-delete-jx{
   stroke: #860000;
   stroke-width: 3.5;
+}
+
+.i-side-svg:hover .i-inside-cog {
+  fill: rgb(0, 0, 0);
+}
+
+.i-side-svg:hover .i-outside-cog {
+  stroke: #863600;
 }
 
 .strip .Boxes-Habit {

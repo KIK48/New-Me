@@ -69,7 +69,7 @@ export default function WeekTViewPage() {
                 </svg>
               </button>
 
-              <button className='top-btns'> {/* This button is not an arrow btn this is the change btn*/}
+              <button className={mode === "M" ? "top-btns active" : "top-btns"} onClick={() => selectMode('M')}> {/* This button is not an arrow btn this is the change btn*/}
                 <svg width="25" height="25" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path className='i-changeBtn' d="M2.00049 32L22.0005 42L42.0005 32M2.00049 22L22.0005 32L42.0005 22M22.0005 2L2.00049 12L22.0005 22L42.0005 12L22.0005 2Z" stroke="#1E1E1E" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>

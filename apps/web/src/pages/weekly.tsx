@@ -98,7 +98,7 @@ export default function WeekTViewPage() {
                 <AddHabit
                   onClose = {() => {
                     setModalOpen(false); 
-                    selectMode(null); // Idk about this error
+                    selectMode('A'); // Idk about this error
                   }}
                 />
               )}  

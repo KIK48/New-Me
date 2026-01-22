@@ -5,12 +5,16 @@ import type { Habit, HabitWeekStatus } from "../Temps/types";
 import { addDays, buildWeek, getMondayISO } from "../Temps/week";
 import HabitRow from "../components/HabitRow";
 import { useMode } from "../hooks/ModeContext";
+import AddHabit from "../modals/addHabit";
 
 import '../styles/pages/weekly.css' 
 
 export default function WeekTViewPage() {
 
   const {mode, selectMode} = useMode();
+
+  const [modalOpen, setModalOpen] = useState(false);
+
   const [weekId, setWeekId] = useState(() => getMondayISO());
   const week = useMemo(() => buildWeek(weekId), [weekId]);
 
@@ -81,12 +85,23 @@ export default function WeekTViewPage() {
                 </svg>
               </button>
 
-              <button className='top-btns'> {/* This button is not an arrow btn this is the add btn*/}
+              <button className={mode === "A" ? "top-btns active" : "top-btns"} onClick={() => {
+                selectMode('A');
+                setModalOpen(true);
+              }}> {/* This button is not an arrow btn this is the add btn*/}
                 <svg width="66" height="66" viewBox="0 0 66 66" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <circle className = 'i-rings' cx="32.5" cy="32.5" r="27.5" stroke="#1E1E1E" strokeWidth="4"/>
                   <path className='i-add'd="M22 33L33 33M33 33C33 33 33 33 44 33M33 33C33 33 33 33 33 22M33 33V44" stroke="#1E1E1E" strokeWidth="2.7" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
+              {modalOpen && (
+                <AddHabit
+                  onClose = {() => {
+                    setModalOpen(false); 
+                    selectMode('A'); // Idk about this error
+                  }}
+                />
+              )}  
             </div>
 
             <button className='top-btns' type="button" onClick={() => setWeekId(addDays(weekId, 7))}>

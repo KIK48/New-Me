@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState} from "react";
 
-import { habitsApi } from "../api";
-import type { Habit, HabitWeekStatus } from "../Temps/types";
+import { habitosApi, habitsApi } from "../api";
+import type {  Habito, HabitWeekStatus } from "../Temps/types";
 import { addDays, buildWeek, getMondayISO } from "../Temps/week";
 import HabitRow from "../components/HabitRow";
 import { useMode } from "../hooks/ModeContext";
@@ -9,7 +9,7 @@ import AddHabit from "../modals/addHabit";
 
 import '../styles/pages/weekly.css' 
 
-export default function Weekly() {
+export default function WeekTViewPage() {
 
   const {mode, selectMode} = useMode();
 
@@ -18,13 +18,13 @@ export default function Weekly() {
   const [weekId, setWeekId] = useState(() => getMondayISO());
   const week = useMemo(() => buildWeek(weekId), [weekId]);
 
-  const [habits, setHabits] = useState<Habit[]>([]);
+  const [habits, setHabits] = useState<Habito[]>([]);
   const [statuses, setStatuses] = useState<HabitWeekStatus[]>([]);
 
   async function refresh() {
     const [h, s] = await Promise.all([
-      habitsApi.getHabits(),
-      habitsApi.getStatusesForWeek(weekId),
+      habitosApi.getHabits(),
+      habitosApi.getStatusesForWeek(weekId),
     ]);
     setHabits(h);
     setStatuses(s);

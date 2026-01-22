@@ -3,6 +3,13 @@ export type Habit = {
     name: string;
 }
 
+export type Habito = {
+    id: string;
+    name: string;
+    startWeek: string;
+    endWeek: string;
+}
+
 export type Week = {
     weekID: string; //Monday ex: "2026-01-12"
     startISO: string; //Lunes

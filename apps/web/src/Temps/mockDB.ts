@@ -1,10 +1,14 @@
-import type {Habit, HabitWeekStatus} from "./types";
+import { apiGet } from "../api/habits";
+import type {Habit, Habito, HabitWeekStatus} from "./types";
 
 export const mockHabits: Habit[] = [
     {id: "h1", name: "Gym"},
     {id: "h2", name: "Study"},
     {id: "h3", name: "Clean room"},
 ];
+
+const data = await apiGet<Habito[]>("/habits");
+export const Habitos: Habito[] = data;
 
 export let mockStatuses: HabitWeekStatus[] = [
     {

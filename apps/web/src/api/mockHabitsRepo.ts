@@ -1,5 +1,5 @@
-import type { HabitsRepo } from "./getHabits";
-import { mockHabits, mockStatuses } from "../Temps/mockDB";
+import type { HabitsRepo, HRepo } from "./getHabits";
+import { Habitos, mockHabits, mockStatuses } from "../Temps/mockDB";
 import type { HabitWeekStatus } from "../Temps/types";
 
 function ensureStatus(habitID: string, weekID: string): HabitWeekStatus {
@@ -24,6 +24,25 @@ export const mockHabitsRepo: HabitsRepo = {
     return mockStatuses.filter((s) => s.weekID === weekID);
   },
 
+  async toggleHabitDay(habitID, weekID, dayISO) {
+    const st = ensureStatus(habitID, weekID);
+
+    const current = st.days[dayISO] ?? null; // treat undefined as empty
+
+    if (current === null) st.days[dayISO] = true;        // empty -> check
+    else if (current === true) st.days[dayISO] = false;  // check -> x
+    else st.days[dayISO] = null; 
+  },
+};
+
+export const HabitosRepo: HRepo = {
+  async getHabits() {
+    return Habitos;
+  },
+
+  async getStatusesForWeek(weekID) {
+    return mockStatuses.filter((s) => s.weekID === weekID);
+  },
   async toggleHabitDay(habitID, weekID, dayISO) {
     const st = ensureStatus(habitID, weekID);
 

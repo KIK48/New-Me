@@ -1,3 +1,5 @@
+import { DayStatus } from "./dayStatus";
+
 export type Habit = {
     id: string;
     name: string;
@@ -21,4 +23,16 @@ export type HabitWeekStatus = {
     habitID: string;
     weekID: string;
     days: Record<string, boolean | null>;
+}
+
+export type HtDay = {
+    date: string;
+    status: DayStatus;
+}
+
+export type HtWkSs = {
+    habitID: string;
+    weekID: string;
+    end: string;
+    days: HtDay[];
 }

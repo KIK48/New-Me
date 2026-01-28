@@ -1,6 +1,6 @@
-import type { HabitsRepo, HRepo } from "./getHabits";
-import { mockHabitsRepo, HabitosRepo } from "./mockHabitsRepo";
+import type { HabitsRepo, HRepo } from "./helpers/types/getHabits";
+import { mockHabitsRepo, HabitosRepo } from "./src/mockHabitsRepo";
 
-export const habitsApi: HabitsRepo = mockHabitsRepo;
+export const habitsApi: HabitsRepo = mockHabitsRepo; // Mock Data
 
-export const habitosApi: HRepo = HabitosRepo;
+export const habitosApi: HRepo = HabitosRepo; // Real Data kind of

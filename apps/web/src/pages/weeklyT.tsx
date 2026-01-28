@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState} from "react";
 
 import { habitosApi, habitsApi } from "../api";
-import type {  Habito, HabitWeekStatus } from "../Temps/types";
-import { addDays, buildWeek, getMondayISO } from "../Temps/week";
-import HabitRow from "../components/HabitRow";
+import type {  Habito, HtWkSs } from "../api/helpers/types/types";
+import { addDays, buildWeek, getMondayISO, toDate } from "../api/helpers/week";
+import HabitRowT from "../components/HabitRowT";
 import { useMode } from "../hooks/ModeContext";
 import AddHabit from "../modals/addHabit";
 
@@ -11,15 +11,15 @@ import '../styles/pages/weekly.css'
 
 export default function WeekTViewPage() {
 
-  const {mode, selectMode} = useMode();
+  const {mode, selectMode} = useMode(); // To select mode
 
-  const [modalOpen, setModalOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false); // To open modal
 
-  const [weekId, setWeekId] = useState(() => getMondayISO());
-  const week = useMemo(() => buildWeek(weekId), [weekId]);
+  const [weekId, setWeekId] = useState(() => getMondayISO()); // To get the monday???
+  const week = useMemo(() => buildWeek(weekId), [weekId]); // To build the week
 
-  const [habits, setHabits] = useState<Habito[]>([]);
-  const [statuses, setStatuses] = useState<HabitWeekStatus[]>([]);
+  const [habits, setHabits] = useState<Habito[]>([]); // Here we have real data for habits so all the habits
+  const [statuses, setStatuses] = useState<Map<string, HtWkSs>>(new Map); // Here real, should return statuses for the current week
 
   async function refresh() {
     const [h, s] = await Promise.all([
@@ -35,11 +35,11 @@ export default function WeekTViewPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekId]);
 
-  function findStatus(habitId: string) {
-    return statuses.find((s) => s.habitID === habitId);
+  function findStatus(habitId: string, week:Date) { // I dont think we should be able to return undefined
+    return statuses.get(`${habitId}:${week}`);
   }
 
-  function formatDate(isoDate: string) {
+  function formatDate(isoDate: string) { // to format the date
     const [year, month, day] = isoDate.split("-");
     return `${month}/${day}/${year}`;
   }
@@ -134,11 +134,11 @@ export default function WeekTViewPage() {
 
       <div className="habits">
         {habits.map((h) => (
-          <HabitRow
+          <HabitRowT
             key={h.id}
             habit={h}
             week={week}
-            status={findStatus(h.id)}
+            status={findStatus(h.id, toDate(week.startISO))}
             onToggleDay={onToggleDay}
           />
         ))}

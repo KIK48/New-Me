@@ -1,4 +1,4 @@
-import type {Habit, Habito, HabitWeekStatus} from "../Temps/types";
+import type {Habit, Habito, HabitWeekStatus, HtWkSs} from "./types";
 
 export type HabitsRepo = {
     getHabits(): Promise<Habit[]>;
@@ -8,6 +8,6 @@ export type HabitsRepo = {
 
 export type HRepo = {
     getHabits(): Promise<Habito[]>;
-    getStatusesForWeek(weekID:string): Promise<HabitWeekStatus[]>;
+    getStatusesForWeek(weekID:string): Promise<Map<string, HtWkSs>>;
     toggleHabitDay(habitID: string, weekID: string, dayISO: string): Promise<void>;
 };

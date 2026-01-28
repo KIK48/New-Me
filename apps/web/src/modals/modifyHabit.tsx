@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import type { Habit } from "../Temps/types";
+import type { Habit } from "../api/helpers/types/types";
 import "../styles/modals/modifyHabit.css"
 
 type Props = {

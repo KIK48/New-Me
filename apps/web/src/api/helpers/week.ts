@@ -7,6 +7,14 @@ export function toISODate(d: Date): string {
     return `${y}-${m}-${day}`;
 }
 
+export function toDate(s: string): Date {
+  const d = new Date(`${s}T00:00:00.000Z`);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error(`Invalid date string: ${s}`);
+  }
+  return d;
+}
+
 export function addDays(dateISO: string, days: number): string {
     const d = new Date(dateISO + "T00:00:00");
     d.setDate(d.getDate() + days);

@@ -45,7 +45,7 @@ export default function WeekTViewPage() {
   }
 
   async function onToggleDay(habitId: string, dayIso: string) {
-    await habitsApi.toggleHabitDay(habitId, weekId, dayIso);
+    await habitosApi.toggleHabitDay(habitId, weekId, dayIso);
     await refresh();
   }
 

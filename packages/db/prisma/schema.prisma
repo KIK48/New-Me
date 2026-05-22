@@ -13,7 +13,29 @@ model Habit {
   id        String   @id @default(cuid())
   name      String
   notes     String?
-  isActive  Boolean  @default(true)
+
+  startWeek DateTime
+  endWeek DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  days HabitDay[]
+}
+
+model HabitDay {
+  habitId String
+  date    DateTime
+  status  DayStatus @default(UNSET)
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@id([habitId, date])     // one record per habit per day
+  @@index([date])
+}
+
+enum DayStatus {
+  UNSET   // blank
+  DONE    // check
+  MISSED  // X
 }

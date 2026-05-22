@@ -1,10 +1,14 @@
-import type {Habit, HabitWeekStatus} from "./types";
+import { apiGet } from "../helpers/habits";
+import type {Habit, Habito, HabitWeekStatus, HtWkSs} from "../helpers/types/types";
 
 export const mockHabits: Habit[] = [
     {id: "h1", name: "Gym"},
     {id: "h2", name: "Study"},
     {id: "h3", name: "Clean room"},
 ];
+
+const habit_data = await apiGet<Habito[]>("/habits");
+export const Habitos: Habito[] = habit_data;
 
 export let mockStatuses: HabitWeekStatus[] = [
     {
@@ -34,3 +38,6 @@ export let mockStatuses: HabitWeekStatus[] = [
         },
     },
 ];
+
+//const status_data = await apiGet<Week>("/habit-days/week"); <- this is the api we need to call to fetch statuses but
+export const weekCache = new Map<string, HtWkSs>();

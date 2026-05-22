@@ -1,33 +1,37 @@
 import { useEffect, useMemo, useState} from "react";
 
-import { habitsApi } from "../api";
-import type { Habit, HabitWeekStatus } from "../api/helpers/types/types";
-import { addDays, buildWeek, getMondayISO } from "../api/helpers/week";
-import HabitRow from "../components/HabitRow";
+import { habitosApi, habitsApi } from "../api";
+import type { Habito, HtDay, HtWkSs } from "../api/helpers/types/types";
+import { DayStatus } from "../api/helpers/types/dayStatus";
+import { addDays, buildWeek, getMondayISO, toDate } from "../api/helpers/week";
+import HabitRowT from "../components/HabitRowT";
 import { useMode } from "../hooks/ModeContext";
 import AddHabit from "../modals/addHabit";
 
 import '../styles/pages/weekly.css' 
 
-export default function Weekly() {
+export default function WeekTViewPage() {
 
-  const {mode, selectMode} = useMode();
+  const {mode, selectMode} = useMode(); // To select mode
 
-  const [modalOpen, setModalOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false); // To open modal
 
-  const [weekId, setWeekId] = useState(() => getMondayISO());
-  const week = useMemo(() => buildWeek(weekId), [weekId]);
+  const [weekId, setWeekId] = useState(() => getMondayISO()); // To get the monday???
+  const week = useMemo(() => buildWeek(weekId), [weekId]); // To build the week
 
-  const [habits, setHabits] = useState<Habit[]>([]);
-  const [statuses, setStatuses] = useState<HabitWeekStatus[]>([]);
+  const [habits, setHabits] = useState<Habito[]>([]); // Here we have real data for habits so all the habits
+  const [statuses, setStatuses] = useState<Map<string, HtWkSs>>(new Map); // Here real, should return statuses for the current week
+  const [localDays, setLocalDays] = useState<Map<string, DayStatus>>(new Map()); // local unsaved toggles, key: `${habitId}:${dayIso}`
 
   async function refresh() {
-    const [h, s] = await Promise.all([
-      habitsApi.getHabits(),
-      habitsApi.getStatusesForWeek(weekId),
-    ]);
+    const h = await habitosApi.getHabits();
     setHabits(h);
-    setStatuses(s);
+    try {
+      const s = await habitosApi.getStatusesForWeek(weekId);
+      setStatuses(s);
+    } catch {
+      // /habit-days/week endpoint not yet implemented
+    }
   }
 
   useEffect(() => {
@@ -35,8 +39,15 @@ export default function Weekly() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekId]);
 
-  function findStatus(habitId: string) {
-    return statuses.find((s) => s.habitID === habitId);
+  function findStatus(habitId: string): HtWkSs {
+    const apiStatus = statuses.get(`${habitId}:${weekId}`);
+    const days: HtDay[] = week.days.map(dayIso => ({
+      date: dayIso,
+      status: localDays.get(`${habitId}:${dayIso}`)
+              ?? apiStatus?.days.find(d => d.date === dayIso)?.status
+              ?? DayStatus.UNSET,
+    }));
+    return { habitID: habitId, weekID: weekId, end: week.endISO, days };
   }
 
   function formatDate(isoDate: string) {
@@ -44,9 +55,17 @@ export default function Weekly() {
     return `${month}/${day}/${year}`;
   }
 
-  async function onToggleDay(habitId: string, dayIso: string) {
-    await habitsApi.toggleHabitDay(habitId, weekId, dayIso);
-    await refresh();
+  function onToggleDay(habitId: string, dayIso: string) {
+    const key = `${habitId}:${dayIso}`;
+    setLocalDays(prev => {
+      const next = new Map(prev);
+      const cur = next.get(key) ?? DayStatus.UNSET;
+      const nxt = cur === DayStatus.UNSET ? DayStatus.DONE
+                : cur === DayStatus.DONE   ? DayStatus.MISSED
+                : DayStatus.UNSET;
+      next.set(key, nxt);
+      return next;
+    });
   }
 
   return (
@@ -96,10 +115,11 @@ export default function Weekly() {
               </button>
               {modalOpen && (
                 <AddHabit
-                  onClose = {() => {
-                    setModalOpen(false); 
-                    selectMode('A'); // Idk about this error
+                  onClose={() => {
+                    setModalOpen(false);
+                    selectMode('A');
                   }}
+                  onCreated={() => void refresh()}
                 />
               )}  
             </div>
@@ -134,7 +154,7 @@ export default function Weekly() {
 
       <div className="habits">
         {habits.map((h) => (
-          <HabitRow
+          <HabitRowT
             key={h.id}
             habit={h}
             week={week}

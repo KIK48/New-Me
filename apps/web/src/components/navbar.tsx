@@ -21,6 +21,12 @@ export default function Navbar() {
         >
           Weekly
         </NavLink>
+        <NavLink
+          to="/weeklyT"
+          className={({ isActive }) => `navItem letters ${isActive ? "active" : ""}`}
+        >
+          WeeklyT
+        </NavLink>
   
     </div>
   );

@@ -1,9 +1,18 @@
+
 export function toISODate(d: Date): string {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
 
     return `${y}-${m}-${day}`;
+}
+
+export function toDate(s: string): Date {
+  const d = new Date(`${s}T00:00:00.000Z`);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error(`Invalid date string: ${s}`);
+  }
+  return d;
 }
 
 export function addDays(dateISO: string, days: number): string {

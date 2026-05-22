@@ -1,4 +1,4 @@
-import type { Habit, Week, HabitWeekStatus } from "../api/helpers/types/types";
+import type { Habit, Week, HtWkSs } from "../api/helpers/types/types";
 
 import checkIcon from "/Check square.svg";
 import xIcon from "/X square.svg";
@@ -8,14 +8,16 @@ import { useEffect, useState } from "react";
 
 import HabbitMod from "../modals/modifyHabit";
 
+import { DayStatus } from "../api/helpers/types/dayStatus";
+
 type Props = {
   habit: Habit;
   week: Week;
-  status?: HabitWeekStatus;
+  status?: HtWkSs;
   onToggleDay: (habitId: string, dayIso: string) => void;
 };
 
-export default function HabitRow({ habit, week, status, onToggleDay }: Props) {
+export default function HabitRowT({ habit, week, status, onToggleDay }: Props) {
 
   const {mode} = useMode();
   const isActive = 
@@ -34,6 +36,14 @@ export default function HabitRow({ habit, week, status, onToggleDay }: Props) {
     document.body.style.overflow = prev;
   };
 }, [modalOpen]);
+
+const statusByDate = new Map((status?.days ?? []).map(d => [d.date, d.status]));
+
+console.log("week.days:", week.days);
+console.log("status?.days:", status?.days);
+console.log("statusByDate size:", statusByDate.size);
+console.log("lookup example:", week.days[0], statusByDate.get(week.days[0]));
+
 
   return (
     <div className="Habit strip">
@@ -79,13 +89,13 @@ export default function HabitRow({ habit, week, status, onToggleDay }: Props) {
 
       <div className="Boxes-Habit strip">
         {week.days.map((dayIso) => {
-          const value = status?.days?.[dayIso] ?? null;
-          const cls =
-            value === true
-              ? "box-selector is-yes"
-              : value === false
-              ? "box-selector is-no"
-              : "box-selector";
+          const st = statusByDate.get(dayIso) ?? "UNSET";
+          const cls = 
+                    st === "DONE"
+                    ? "box-selector is-yes"
+                    : st === "MISSED"
+                    ? "box-selector is-no"
+                    : "box-selector";
 
           return (
             <button
@@ -95,10 +105,10 @@ export default function HabitRow({ habit, week, status, onToggleDay }: Props) {
               title={dayIso}
               onClick={() => onToggleDay(habit.id, dayIso)}
             >
-              {value !== null && (
+              {st !== "UNSET" && (
                 <img
-                  src={value ? checkIcon : xIcon}
-                  alt={value ? "done" : "not done"}
+                  src={st === "DONE" ? checkIcon : xIcon}
+                  alt={st === "DONE" ? "done" : "missed"}
                   className="icon-onBox"
                 />
               )}

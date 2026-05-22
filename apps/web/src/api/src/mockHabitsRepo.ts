@@ -1,6 +1,6 @@
 import type { HabitsRepo, HRepo } from "../helpers/types/getHabits";
 import { Habitos, mockHabits, mockStatuses, weekCache } from "./mockDB";
-import type { HabitWeekStatus, HtWkSs } from "../helpers/types/types";
+import type { Habito, HabitWeekStatus, HtWkSs } from "../helpers/types/types";
 import { apiGet } from "../helpers/habits";
 
 
@@ -37,9 +37,9 @@ export const mockHabitsRepo: HabitsRepo = {
   },
 };
 
-export const HabitosRepo: HRepo = { // This looks good
+export const HabitosRepo: HRepo = {
   async getHabits() {
-    return Habitos;
+    return apiGet<Habito[]>("/habits");
   },
 
   async getStatusesForWeek(weekID) {

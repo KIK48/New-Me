@@ -1,12 +1,23 @@
+import { useState } from "react";
 import { createPortal } from "react-dom";
-import type { Habit } from "../api/helpers/types/types";
 import "../styles/modals/modifyHabit.css"
+import { apiPost } from "../api/helpers/habits";
 
 type Props = {
   onClose: () => void;
+  onCreated?: () => void;
 };
 
-export default function AddHabit({ onClose }: Props) {
+export default function AddHabit({ onClose, onCreated }: Props) {
+  const [name, setName] = useState("");
+
+  async function handleSave() {
+    if (!name.trim()) return;
+    await apiPost("/habits", {name: name.trim()});
+    onCreated?.();
+    onClose();
+  }
+
   const modalRoot = document.getElementById("root");
   if (!modalRoot) return null;
 
@@ -17,7 +28,7 @@ export default function AddHabit({ onClose }: Props) {
         <div className="modal-content">
           <div className="habit-content">
             <p className="modal-text letters">Habit Name: </p>
-            <input type="text" className="input-hname letters"></input>
+            <input type="text" className="input-hname letters" value={name} onChange={(e) => setName(e.target.value)}></input>
           </div>
         </div>
 
@@ -25,7 +36,7 @@ export default function AddHabit({ onClose }: Props) {
           <button className="btn-secondary letters" onClick={onClose}>
             Cancel
           </button>
-          <button className="btn-primary letters" onClick={onClose}>Save</button>
+          <button className="btn-primary letters" onClick={handleSave}>Save</button> {/*Change here to api */}
         </div>
       </div>
     </div>,

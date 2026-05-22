@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState} from "react";
 
 import { habitosApi, habitsApi } from "../api";
-import type {  Habito, HtWkSs } from "../api/helpers/types/types";
+import type { Habito, HtDay, HtWkSs } from "../api/helpers/types/types";
+import { DayStatus } from "../api/helpers/types/dayStatus";
 import { addDays, buildWeek, getMondayISO, toDate } from "../api/helpers/week";
 import HabitRowT from "../components/HabitRowT";
 import { useMode } from "../hooks/ModeContext";
@@ -20,14 +21,17 @@ export default function WeekTViewPage() {
 
   const [habits, setHabits] = useState<Habito[]>([]); // Here we have real data for habits so all the habits
   const [statuses, setStatuses] = useState<Map<string, HtWkSs>>(new Map); // Here real, should return statuses for the current week
+  const [localDays, setLocalDays] = useState<Map<string, DayStatus>>(new Map()); // local unsaved toggles, key: `${habitId}:${dayIso}`
 
   async function refresh() {
-    const [h, s] = await Promise.all([
-      habitosApi.getHabits(),
-      habitosApi.getStatusesForWeek(weekId),
-    ]);
+    const h = await habitosApi.getHabits();
     setHabits(h);
-    setStatuses(s);
+    try {
+      const s = await habitosApi.getStatusesForWeek(weekId);
+      setStatuses(s);
+    } catch {
+      // /habit-days/week endpoint not yet implemented
+    }
   }
 
   useEffect(() => {
@@ -35,18 +39,33 @@ export default function WeekTViewPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekId]);
 
-  function findStatus(habitId: string, week:Date) { // I dont think we should be able to return undefined
-    return statuses.get(`${habitId}:${week}`);
+  function findStatus(habitId: string): HtWkSs {
+    const apiStatus = statuses.get(`${habitId}:${weekId}`);
+    const days: HtDay[] = week.days.map(dayIso => ({
+      date: dayIso,
+      status: localDays.get(`${habitId}:${dayIso}`)
+              ?? apiStatus?.days.find(d => d.date === dayIso)?.status
+              ?? DayStatus.UNSET,
+    }));
+    return { habitID: habitId, weekID: weekId, end: week.endISO, days };
   }
 
-  function formatDate(isoDate: string) { // to format the date
+  function formatDate(isoDate: string) {
     const [year, month, day] = isoDate.split("-");
     return `${month}/${day}/${year}`;
   }
 
-  async function onToggleDay(habitId: string, dayIso: string) {
-    await habitosApi.toggleHabitDay(habitId, weekId, dayIso);
-    await refresh();
+  function onToggleDay(habitId: string, dayIso: string) {
+    const key = `${habitId}:${dayIso}`;
+    setLocalDays(prev => {
+      const next = new Map(prev);
+      const cur = next.get(key) ?? DayStatus.UNSET;
+      const nxt = cur === DayStatus.UNSET ? DayStatus.DONE
+                : cur === DayStatus.DONE   ? DayStatus.MISSED
+                : DayStatus.UNSET;
+      next.set(key, nxt);
+      return next;
+    });
   }
 
   return (
@@ -96,10 +115,11 @@ export default function WeekTViewPage() {
               </button>
               {modalOpen && (
                 <AddHabit
-                  onClose = {() => {
-                    setModalOpen(false); 
-                    selectMode('A'); // Idk about this error
+                  onClose={() => {
+                    setModalOpen(false);
+                    selectMode('A');
                   }}
+                  onCreated={() => void refresh()}
                 />
               )}  
             </div>
@@ -138,7 +158,7 @@ export default function WeekTViewPage() {
             key={h.id}
             habit={h}
             week={week}
-            status={findStatus(h.id, toDate(week.startISO))}
+            status={findStatus(h.id)}
             onToggleDay={onToggleDay}
           />
         ))}

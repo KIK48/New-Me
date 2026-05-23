@@ -1,13 +1,20 @@
 
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/AuthContext';
 import '../styles/components/navbar.css' // change
 
 export default function Navbar() {
-  
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    logout();
+    navigate("/login", { replace: true });
+  }
 
   return (
     <div className='Nav focus-glow container' tabIndex={0}>
-      
+
         <NavLink
           to="/"
           end
@@ -27,7 +34,12 @@ export default function Navbar() {
         >
           WeeklyT
         </NavLink>
-  
+
+        {/* Logout sits at the bottom of the nav via margin-top: auto in CSS */}
+        <button className="navItem letters nav-logout" onClick={handleLogout}>
+          Log out
+        </button>
+
     </div>
   );
 }

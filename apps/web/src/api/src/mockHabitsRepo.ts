@@ -1,5 +1,5 @@
 import type { HabitsRepo, HRepo } from "../helpers/types/getHabits";
-import { Habitos, mockHabits, mockStatuses, weekCache } from "./mockDB";
+import { mockHabits, mockStatuses, weekCache } from "./mockDB";
 import type { Habito, HabitWeekStatus, HtWkSs } from "../helpers/types/types";
 import { apiDelete, apiGet, apiPut } from "../helpers/habits";
 
@@ -43,8 +43,12 @@ export const HabitosRepo: HRepo = {
   },
 
   async getStatusesForWeek(weekID) {
+    // Fetch habits here instead of relying on a module-level cached array.
+    // The old approach used a top-level await in mockDB.ts which fired at import
+    // time (before login), triggering a 401 -> handleUnauthorized -> infinite reload loop.
+    const habits = await apiGet<Habito[]>("/habits");
     await Promise.all(
-      Habitos.filter(h => h?.id).map(async habit => {
+      habits.filter(h => h?.id).map(async habit => {
           const key = `${habit.id}:${weekID}`;
 
           const week = await apiGet<HtWkSs>(

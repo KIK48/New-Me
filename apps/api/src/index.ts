@@ -1,20 +1,29 @@
+import "dotenv/config"; // must be first so process.env is populated before anything else imports it
 import express from "express";
 import cors from "cors";
 
 import habitsRouter from "./routes/habits.routes";
 import habitDay from "./routes/habitDay.routes";
+import authRouter from "./routes/auth.routes";
+import { requireAuth } from "./middleware/requireAuth";
 
 const app = express();
 
-app.use(cors({ origin: "http://localhost:5173" }));
+// CORS_ORIGIN is set in .env — localhost for dev, Vercel URL for prod
+app.use(cors({ origin: process.env.CORS_ORIGIN ?? "http://localhost:5173" }));
 app.use(express.json());
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
-app.use("/habits", habitsRouter);
-app.use("/habit-days", habitDay);
+// Public: no token needed to log in / register
+app.use("/auth", authRouter);
 
-app.listen(4000, () => console.log("Server running on http://localhost:4000"));
+// Protected: requireAuth middleware validates the JWT before every request
+app.use("/habits", requireAuth, habitsRouter);
+app.use("/habit-days", requireAuth, habitDay);
+
+const port = process.env.PORT ?? 4000;
+app.listen(port, () => console.log(`Server running on http://localhost:${port}`));
 
 
 /* to call the post api for habit-days

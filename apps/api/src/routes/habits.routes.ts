@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { prisma } from "../../../../packages/db/src/prisma";
 import { startOfWeekMonday } from "../utils/dates";
+import type { AuthRequest } from "../middleware/requireAuth";
 
 const router = Router();
 
-// CREATE habit
+// CREATE habit — always owned by the authenticated user
 router.post("/", async (req, res) => {
+  const { userId } = (req as AuthRequest).user;
   const { name, notes } = req.body;
 
   if (!name || typeof name !== "string" || !name.trim()) {
@@ -14,6 +16,7 @@ router.post("/", async (req, res) => {
 
   const habit = await prisma.habit.create({
     data: {
+      userId,
       name: name.trim(),
       notes: typeof notes === "string" && notes.trim() ? notes.trim() : null,
       startWeek: startOfWeekMonday(new Date()),
@@ -25,18 +28,22 @@ router.post("/", async (req, res) => {
 });
 
 
-// READ Getting all habits
-router.get("/", async (_req, res) => { // req == request, res == response
-    const habits = await prisma.habit.findMany({
-        orderBy: {createdAt: "desc"},
-    });
-    res.json(habits);
+// READ — only habits belonging to the current user
+router.get("/", async (req, res) => {
+  const { userId } = (req as AuthRequest).user;
+
+  const habits = await prisma.habit.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+  });
+  res.json(habits);
 });
 
-// UPDATE habit (name, notes, isActive)
+// UPDATE habit (name, notes) — user must own the habit
 router.put("/:id", async (req, res) => {
+  const { userId } = (req as unknown as AuthRequest).user;
   const { id } = req.params;
-  const { name, notes, isActive } = req.body;
+  const { name, notes } = req.body;
 
   // Type the update data using Prisma's generated args type
   type UpdateData = Parameters<typeof prisma.habit.update>[0]["data"];
@@ -62,8 +69,9 @@ router.put("/:id", async (req, res) => {
   }
 
   try {
+    // where includes userId so a user can't modify another user's habit
     const updated = await prisma.habit.update({
-      where: { id },
+      where: { id, userId },
       data,
     });
 
@@ -73,12 +81,14 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE habit
+// DELETE habit — user must own the habit
 router.delete("/:id", async (req, res) => {
+  const { userId } = (req as unknown as AuthRequest).user;
   const { id } = req.params;
 
   try {
-    await prisma.habit.delete({ where: { id } });
+    // where includes userId so a user can't delete another user's habit
+    await prisma.habit.delete({ where: { id, userId } });
     res.status(204).send(); // 204 = No Content (successful delete)
   } catch (err) {
     res.status(404).json({ error: "Habit not found" });
@@ -86,20 +96,25 @@ router.delete("/:id", async (req, res) => {
 });
 
 // TEMP DELETE LATER
-router.post("/debug/seed-habits", async (_req, res) => {
+router.post("/debug/seed-habits", async (req, res) => {
+  const { userId } = (req as AuthRequest).user;
+
   const habits = await prisma.habit.createMany({
     data: [
       {
+        userId,
         name: "Gym",
         notes: "Leg day",
         startWeek: new Date("2026-01-19T00:00:00.000Z"),
       },
       {
+        userId,
         name: "Read",
         notes: "20 minutes",
         startWeek: new Date("2026-01-19T00:00:00.000Z"),
       },
       {
+        userId,
         name: "Meditate",
         notes: null,
         startWeek: new Date("2026-01-26T00:00:00.000Z"), // next week

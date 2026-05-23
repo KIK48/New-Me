@@ -10,4 +10,5 @@ export type HRepo = {
     getHabits(): Promise<Habito[]>;
     getStatusesForWeek(weekID:string): Promise<Map<string, HtWkSs>>;
     toggleHabitDay(habitID: string, weekID: string, dayISO: string): Promise<void>;
+    deleteHabit(habitID: string): Promise<void>;
 };

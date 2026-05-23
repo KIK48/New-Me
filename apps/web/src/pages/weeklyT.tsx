@@ -55,6 +55,11 @@ export default function WeekTViewPage() {
     return `${month}/${day}/${year}`;
   }
 
+  async function onDeleteHabit(habitId: string) {
+    await habitosApi.deleteHabit(habitId);
+    await refresh();
+  }
+
   function onToggleDay(habitId: string, dayIso: string) {
     const key = `${habitId}:${dayIso}`;
     setLocalDays(prev => {
@@ -160,6 +165,7 @@ export default function WeekTViewPage() {
             week={week}
             status={findStatus(h.id)}
             onToggleDay={onToggleDay}
+            onDelete={onDeleteHabit}
           />
         ))}
       </div>

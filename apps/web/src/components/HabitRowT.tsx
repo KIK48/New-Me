@@ -15,9 +15,10 @@ type Props = {
   week: Week;
   status?: HtWkSs;
   onToggleDay: (habitId: string, dayIso: string) => void;
+  onDelete: (habitId: string) => void;
 };
 
-export default function HabitRowT({ habit, week, status, onToggleDay }: Props) {
+export default function HabitRowT({ habit, week, status, onToggleDay, onDelete }: Props) {
 
   const {mode} = useMode();
   const isActive = 
@@ -50,7 +51,7 @@ console.log("lookup example:", week.days[0], statusByDate.get(week.days[0]));
       <div className="Title-Habit strip letters">
         <span className={`habit-name ${isActive ? "active": ""}`}>{habit.name}</span> 
         {mode === "D" ? (
-          <button className="side-btn" aria-label="Toggle habit">
+          <button className="side-btn" aria-label="Toggle habit" onClick={() => onDelete(habit.id)}>
             <svg className="i-side-svg" width="39" height="35" viewBox="0 0 39 35" fill="none" xmlns="http://www.w3.org/2000/svg">
               <g clip-path="url(#clip0_34_39)">
                 <path className="i-delete-jtag" d="M34.125 6H13L1.625 18L13 30H34.125C34.987 30 35.8136 29.6839 36.4231 29.1213C37.0326 28.5587 37.375 27.7956 37.375 27V9C37.375 8.20435 37.0326 7.44129 36.4231 6.87868C35.8136 6.31607 34.987 6 34.125 6Z" stroke="#1E1E1E" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>

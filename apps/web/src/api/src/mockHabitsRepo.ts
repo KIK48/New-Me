@@ -1,7 +1,7 @@
 import type { HabitsRepo, HRepo } from "../helpers/types/getHabits";
 import { Habitos, mockHabits, mockStatuses, weekCache } from "./mockDB";
 import type { Habito, HabitWeekStatus, HtWkSs } from "../helpers/types/types";
-import { apiGet } from "../helpers/habits";
+import { apiDelete, apiGet } from "../helpers/habits";
 
 
 function ensureStatus(habitID: string, weekID: string): HabitWeekStatus {
@@ -65,6 +65,10 @@ export const HabitosRepo: HRepo = {
 
     if (current === null) st.days[dayISO] = true;        // empty -> check
     else if (current === true) st.days[dayISO] = false;  // check -> x
-    else st.days[dayISO] = null; 
+    else st.days[dayISO] = null;
+  },
+
+  async deleteHabit(habitID) {
+    await apiDelete(`/habits/${habitID}`);
   },
 };

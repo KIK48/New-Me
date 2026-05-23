@@ -1,7 +1,7 @@
 import type { HabitsRepo, HRepo } from "../helpers/types/getHabits";
 import { Habitos, mockHabits, mockStatuses, weekCache } from "./mockDB";
 import type { Habito, HabitWeekStatus, HtWkSs } from "../helpers/types/types";
-import { apiDelete, apiGet } from "../helpers/habits";
+import { apiDelete, apiGet, apiPut } from "../helpers/habits";
 
 
 function ensureStatus(habitID: string, weekID: string): HabitWeekStatus {
@@ -47,8 +47,6 @@ export const HabitosRepo: HRepo = {
       Habitos.filter(h => h?.id).map(async habit => {
           const key = `${habit.id}:${weekID}`;
 
-          if (weekCache.has(key)) return;
-
           const week = await apiGet<HtWkSs>(
             `/habit-days/week?habitId=${habit.id}&start=${weekID}`
           );
@@ -70,5 +68,14 @@ export const HabitosRepo: HRepo = {
 
   async deleteHabit(habitID) {
     await apiDelete(`/habits/${habitID}`);
+  },
+
+  async saveStatuses(days) {
+    await Promise.all(
+      [...days.entries()].map(([key, status]) => {
+        const [habitId, dayIso] = key.split(":");
+        return apiPut("/habit-days", { habitId, date: dayIso, status });
+      })
+    );
   },
 };

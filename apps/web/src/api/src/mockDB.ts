@@ -1,14 +1,10 @@
-import { apiGet } from "../helpers/habits";
-import type {Habit, Habito, HabitWeekStatus, HtWkSs} from "../helpers/types/types";
+import type {Habit, HabitWeekStatus, HtWkSs} from "../helpers/types/types";
 
 export const mockHabits: Habit[] = [
     {id: "h1", name: "Gym"},
     {id: "h2", name: "Study"},
     {id: "h3", name: "Clean room"},
 ];
-
-const habit_data = await apiGet<Habito[]>("/habits");
-export const Habitos: Habito[] = habit_data;
 
 export let mockStatuses: HabitWeekStatus[] = [
     {

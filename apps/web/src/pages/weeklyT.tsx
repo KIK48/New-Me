@@ -28,9 +28,9 @@ export default function WeekTViewPage() {
     setHabits(h);
     try {
       const s = await habitosApi.getStatusesForWeek(weekId);
-      setStatuses(s);
+      setStatuses(new Map(s));
     } catch {
-      // /habit-days/week endpoint not yet implemented
+      // ignore
     }
   }
 
@@ -53,6 +53,13 @@ export default function WeekTViewPage() {
   function formatDate(isoDate: string) {
     const [year, month, day] = isoDate.split("-");
     return `${month}/${day}/${year}`;
+  }
+
+  async function onSave() {
+    if (localDays.size === 0) return;
+    await habitosApi.saveStatuses(localDays);
+    setLocalDays(new Map());
+    await refresh();
   }
 
   async function onDeleteHabit(habitId: string) {
@@ -103,7 +110,7 @@ export default function WeekTViewPage() {
                 </svg>
               </button>
 
-              <button className='top-btns'> {/* This button is not an arrow btn this is the save btn*/}
+              <button className='top-btns' onClick={() => void onSave()}> {/* This button is not an arrow btn this is the save btn*/}
                 <svg width="25" height="25" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path className='i-saveBtn' d="M30 38V22H10V38M10 2V12H26M34 38H6C4.93913 38 3.92172 37.5786 3.17157 36.8284C2.42143 36.0783 2 35.0609 2 34V6C2 4.93913 2.42143 3.92172 3.17157 3.17157C3.92172 2.42143 4.93913 2 6 2H28L38 12V34C38 35.0609 37.5786 36.0783 36.8284 36.8284C36.0783 37.5786 35.0609 38 34 38Z" stroke="#1E1E1E" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>

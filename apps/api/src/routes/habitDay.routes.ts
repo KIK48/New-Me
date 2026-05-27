@@ -74,7 +74,7 @@ router.get('/week', async (req, res) => {
     habitID: habitId,
     weekID: start,
     end: endDate.toISOString().split("T")[0],
-    days: rows.map(r => ({
+    days: rows.map((r: { date: Date; status: string }) => ({
       date: r.date.toISOString().split("T")[0],
       status: r.status,
     })),

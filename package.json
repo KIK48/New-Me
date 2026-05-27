@@ -1,7 +1,8 @@
 {
   "name": "new-me",
   "version": "1.0.0",
-  "main": "index.js",
+  "private": true,
+  "workspaces": ["apps/api", "apps/web", "packages/db"],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState} from "react";
 
-import { habitosApi, habitsApi } from "../api";
+import { habitosApi } from "../api";
 import type { Habito, HtDay, HtWkSs } from "../api/helpers/types/types";
 import { DayStatus } from "../api/helpers/types/dayStatus";
-import { addDays, buildWeek, getMondayISO, toDate } from "../api/helpers/week";
+import { addDays, buildWeek, getMondayISO } from "../api/helpers/week";
 import HabitRowT from "../components/HabitRowT";
 import { useMode } from "../hooks/ModeContext";
 import AddHabit from "../modals/addHabit";

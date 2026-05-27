@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 
 import HabbitMod from "../modals/modifyHabit";
 
-import { DayStatus } from "../api/helpers/types/dayStatus";
+import type { DayStatus } from "../api/helpers/types/dayStatus";
 
 type Props = {
   habit: Habit;

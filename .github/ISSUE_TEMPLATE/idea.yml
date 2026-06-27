@@ -1,0 +1,36 @@
+name: Idea / Future Feature
+description: A Phase 2-5 concept — captured but not yet scoped
+labels: ["idea"]
+body:
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Likely Phase
+      options:
+        - "Phase 2 — Reflection"
+        - "Phase 3 — Identity Mode"
+        - "Phase 4 — Growth Analytics"
+        - "Phase 5 — Meet Past You"
+        - "Unknown / TBD"
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What is it? What problem does it solve for the user?
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why does this matter?
+      description: What user need or product principle does this serve?
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes / Open Questions
+      description: Anything else — not required

@@ -1,0 +1,17 @@
+[
+  { "name": "epic",    "color": "7057ff", "description": "Large body of work spanning multiple stories" },
+  { "name": "story",   "color": "0075ca", "description": "Single deliverable within an epic" },
+  { "name": "bug",     "color": "d73a4a", "description": "Something is broken" },
+  { "name": "idea",    "color": "cfd3d7", "description": "Future feature idea, not yet scoped" },
+  { "name": "phase-1", "color": "0e8a16", "description": "Phase 1 — Core Tracker" },
+  { "name": "phase-2", "color": "a2eeef", "description": "Phase 2 — Reflection" },
+  { "name": "phase-3", "color": "e4e669", "description": "Phase 3 — Identity Mode" },
+  { "name": "phase-4", "color": "f9d0c4", "description": "Phase 4 — Growth Analytics" },
+  { "name": "phase-5", "color": "fef2c0", "description": "Phase 5 — Meet Past You" },
+  { "name": "web",     "color": "bfd4f2", "description": "React/Vite web app" },
+  { "name": "mobile",  "color": "d4c5f9", "description": "React Native mobile app" },
+  { "name": "backend", "color": "f9a825", "description": "Node/Express API" },
+  { "name": "infra",   "color": "b60205", "description": "Infrastructure, DevOps, CI/CD" },
+  { "name": "blocked", "color": "e4e669", "description": "Cannot progress until something else is resolved" },
+  { "name": "good first issue", "color": "7fc97f", "description": "Good for newcomers" }
+]

@@ -1,0 +1,48 @@
+name: Epic
+description: A large body of work spanning multiple stories
+labels: ["epic"]
+body:
+  - type: input
+    id: phase
+    attributes:
+      label: Phase
+      placeholder: "e.g. Phase 1 - Core Tracker"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - web
+        - mobile
+        - backend
+        - infra
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Current state → Desired state
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why does this matter?
+    validations:
+      required: true
+
+  - type: textarea
+    id: stories
+    attributes:
+      label: Stories (draft — create as separate issues once ready)
+      description: "Use GitHub task list syntax: - [ ] Story description"
+      placeholder: |
+        - [ ] Story 1
+        - [ ] Story 2

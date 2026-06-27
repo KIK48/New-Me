@@ -1,0 +1,44 @@
+name: Bug
+description: Something is broken
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - web
+        - mobile
+        - backend
+        - infra
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See error
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Device, browser, OS, app version — whatever is relevant

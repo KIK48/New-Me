@@ -1,0 +1,47 @@
+name: Story
+description: A unit of work within an epic — one deliverable, one PR
+labels: ["story"]
+body:
+  - type: input
+    id: epic
+    attributes:
+      label: Parent Epic
+      description: Link to the parent epic issue (e.g. #12)
+      placeholder: "#"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - web
+        - mobile
+        - backend
+        - infra
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What needs to be done and why
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How do we know this is done?
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes / Context
+      description: Anything else useful — edge cases, links, decisions made

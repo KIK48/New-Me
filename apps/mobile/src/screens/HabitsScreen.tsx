@@ -12,14 +12,13 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../context/AuthContext";
 import { AppStack } from "../navigation/types";
 import { API_URL } from "../api/client";
+import { todayISO, formatDate } from "../utils/dates";
 
-type Nav = NativeStackNavigationProp<AppStack, "Habits">;
+// HabitsScreen lives inside the tab navigator, but CreateHabit/EditHabit
+// are on the parent AppStack — useNavigation gives access to the full stack
+type Nav = NativeStackNavigationProp<AppStack>;
 
 type DayStatus = "UNSET" | "DONE" | "MISSED";
-
-function todayISO(): string {
-  return new Date().toISOString().split("T")[0];
-}
 
 function nextStatus(current: DayStatus): DayStatus {
   if (current === "UNSET") return "DONE";
@@ -110,7 +109,10 @@ export default function HabitsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>My Habbits</Text>
+        <View>
+            <Text style={styles.title}>My Habbits</Text>
+            <Text style={styles.todayDate}>{formatDate(todayISO())}</Text>
+          </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
             onPress={() => navigation.navigate("CreateHabit")}
@@ -214,6 +216,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   title: { fontSize: 28, fontWeight: "bold" },
+  todayDate: { fontSize: 13, color: "#888", marginTop: 2 },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 16 },
   addBtn: {
     width: 36,

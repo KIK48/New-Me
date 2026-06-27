@@ -6,4 +6,5 @@ export type AuthStack = {
 export type AppStack = {
   Habits: undefined;
   CreateHabit: undefined;
+  EditHabit: { id: string; name: string; notes?: string | null };
 };

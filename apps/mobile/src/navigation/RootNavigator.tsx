@@ -3,9 +3,9 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../context/AuthContext";
 import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
-import HabitsScreen from "../screens/HabitsScreen";
 import CreateHabitScreen from "../screens/CreateHabitScreen";
 import EditHabitScreen from "../screens/EditHabitScreen";
+import TabNavigator from "./TabNavigator";
 import { AppStack, AuthStack } from "./types";
 
 const AuthNavigator = createNativeStackNavigator<AuthStack>();
@@ -17,7 +17,12 @@ export default function RootNavigator() {
     <NavigationContainer>
       {token ? (
         <AppNavigator.Navigator>
-          <AppNavigator.Screen name="Habits" component={HabitsScreen} />
+          {/* Tab bar lives here — CreateHabit/EditHabit slide on top, hiding the tabs */}
+          <AppNavigator.Screen
+            name="Tabs"
+            component={TabNavigator}
+            options={{ headerShown: false }}
+          />
           <AppNavigator.Screen
             name="CreateHabit"
             component={CreateHabitScreen}

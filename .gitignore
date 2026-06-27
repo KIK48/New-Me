@@ -12,6 +12,7 @@ build/
 .env
 .env.local
 
+
 # prisma
 *.db
 *.db-journal
@@ -19,3 +20,7 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code local state (auto-memory, settings — not source code)
+.claude/memory/
+**/.claude/

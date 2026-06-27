@@ -5,6 +5,7 @@ import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
 import HabitsScreen from "../screens/HabitsScreen";
 import CreateHabitScreen from "../screens/CreateHabitScreen";
+import EditHabitScreen from "../screens/EditHabitScreen";
 import { AppStack, AuthStack } from "./types";
 
 const AuthNavigator = createNativeStackNavigator<AuthStack>();
@@ -21,6 +22,11 @@ export default function RootNavigator() {
             name="CreateHabit"
             component={CreateHabitScreen}
             options={{ title: "New Habit" }}
+          />
+          <AppNavigator.Screen
+            name="EditHabit"
+            component={EditHabitScreen}
+            options={{ title: "Edit Habit" }}
           />
         </AppNavigator.Navigator>
       ) : (

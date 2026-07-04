@@ -1,7 +1,8 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Text } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import HabitsScreen from "../screens/HabitsScreen";
 import WeekScreen from "../screens/WeekScreen";
+import ProfileScreen from "../screens/ProfileScreen";
 import { TabStack } from "./types";
 
 const Tab = createBottomTabNavigator<TabStack>();
@@ -11,21 +12,59 @@ export default function TabNavigator() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarStyle: { paddingBottom: 4 },
+        tabBarActiveTintColor: "#98FF9D",
+        tabBarInactiveTintColor: "#3a7a5a",
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: "500",
+          marginTop: 2,
+        },
+        tabBarStyle: {
+          position: "absolute",
+          backgroundColor: "#085331",
+          borderRadius: 20,
+          marginHorizontal: 20,
+          marginBottom: 24,
+          height: 64,
+          paddingTop: 8,
+          paddingBottom: 10,
+          borderWidth: 1,
+          borderColor: "#98FF9D",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.5,
+          shadowRadius: 12,
+          elevation: 10,
+        },
       }}
     >
       <Tab.Screen
         name="Home"
         component={HabitsScreen}
         options={{
-          tabBarIcon: () => <Text style={{ fontSize: 18 }}>🏠</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="home" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
         name="Week"
         component={WeekScreen}
         options={{
-          tabBarIcon: () => <Text style={{ fontSize: 18 }}>📅</Text>,
+          tabBarLabel: "Weekly",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="calendar" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: "Profile",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="user" size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>

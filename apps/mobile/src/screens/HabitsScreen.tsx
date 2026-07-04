@@ -12,7 +12,8 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../context/AuthContext";
 import { AppStack } from "../navigation/types";
 import { API_URL } from "../api/client";
-import { todayISO, formatDate } from "../utils/dates";
+import { todayISO } from "../utils/dates";
+import { CheckIcon, XIcon } from "../components/HabitIcons";
 
 // HabitsScreen lives inside the tab navigator, but CreateHabit/EditHabit
 // are on the parent AppStack — useNavigation gives access to the full stack
@@ -27,12 +28,14 @@ function nextStatus(current: DayStatus): DayStatus {
 }
 
 export default function HabitsScreen() {
-  const { token, logout } = useAuth();
+  const { token } = useAuth();
   const navigation = useNavigation<Nav>();
   const [habits, setHabits] = useState<any[]>([]);
   const [deleteMode, setDeleteMode] = useState(false);
   // Maps habitId -> today's status
-  const [todayStatuses, setTodayStatuses] = useState<Record<string, DayStatus>>({});
+  const [todayStatuses, setTodayStatuses] = useState<Record<string, DayStatus>>(
+    {},
+  );
 
   // Refetch every time this screen comes into focus (e.g. returning from CreateHabit)
   useFocusEffect(
@@ -94,60 +97,102 @@ export default function HabitsScreen() {
     }
   }
 
-  function statusStyle(status: DayStatus) {
-    if (status === "DONE") return [styles.statusBtn, styles.statusDone];
-    if (status === "MISSED") return [styles.statusBtn, styles.statusMissed];
-    return [styles.statusBtn, styles.statusUnset];
-  }
-
-  function statusLabel(status: DayStatus) {
-    if (status === "DONE") return "✓";
-    if (status === "MISSED") return "✗";
-    return "";
-  }
+  const done = habits.filter((h) => todayStatuses[h.id] === "DONE").length;
+  const pct = habits.length > 0 ? Math.round((done / habits.length) * 100) : 0;
+  const todayLabel = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <View>
-            <Text style={styles.title}>My Habbits</Text>
-            <Text style={styles.todayDate}>{formatDate(todayISO())}</Text>
-          </View>
-        <View style={styles.headerActions}>
+          <Text style={styles.eyebrow}>TODAY</Text>
+          <Text style={styles.title}>Home</Text>
+        </View>
+        <View style={styles.headerRight}>
           <TouchableOpacity
+            style={styles.iconBtn}
             onPress={() => navigation.navigate("CreateHabit")}
-            style={styles.addBtn}
           >
-            <Text style={styles.addBtnText}>+</Text>
+            <Text style={styles.iconBtnText}>+</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => {
-              if (deleteMode) setDeleteMode(false);
-              else setDeleteMode(true);
-            }}
-            style={styles.addBtn}
+            style={[styles.iconBtn, deleteMode && styles.iconBtnDanger]}
+            onPress={() => setDeleteMode(!deleteMode)}
           >
-            <Text style={styles.addBtnText}>-</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={logout}>
-            <Text style={styles.logout}>Log Out</Text>
+            <Text
+              style={[
+                styles.iconBtnText,
+                deleteMode && styles.iconBtnTextDanger,
+              ]}
+            >
+              −
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Progress card */}
+      <View style={styles.progressCard}>
+        <Text style={styles.progressDate}>{todayLabel}</Text>
+        <View style={styles.progressRow}>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${pct}%` as any }]} />
+          </View>
+          <Text style={styles.progressCount}>
+            {done}/{habits.length}
+          </Text>
+        </View>
+      </View>
+
+      {/* Habit list */}
       <FlatList
         data={habits}
         keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.list}
         renderItem={({ item }) => {
           const status = todayStatuses[item.id] ?? "UNSET";
+          const nameColor =
+            status === "DONE"
+              ? "#98FF9D"
+              : status === "MISSED"
+                ? "#ff5555"
+                : "#98eaff";
+          const subtext =
+            status === "DONE"
+              ? "Completed"
+              : status === "MISSED"
+                ? "Missed"
+                : "Tap to mark done";
+
           return (
-            <View style={styles.habit}>
+            <View style={styles.habitCard}>
               <TouchableOpacity
-                style={statusStyle(status)}
+                style={styles.statusIcon}
                 onPress={() => handleCheckIn(item.id)}
               >
-                <Text style={styles.statusLabel}>{statusLabel(status)}</Text>
+                {status === "DONE" && <CheckIcon size={40} />}
+                {status === "MISSED" && <XIcon size={40} />}
               </TouchableOpacity>
-              <Text style={styles.habitName}>{item.name}</Text>
+              <View style={styles.habitInfo}>
+                <Text
+                  style={[
+                    styles.habitName,
+                    {
+                      color: nameColor,
+                      textDecorationLine:
+                        status === "MISSED" ? "line-through" : "none",
+                    },
+                  ]}
+                >
+                  {item.name}
+                </Text>
+                <Text style={styles.habitSub}>{subtext}</Text>
+              </View>
               {!deleteMode ? (
                 <TouchableOpacity
                   onPress={() =>
@@ -158,32 +203,30 @@ export default function HabitsScreen() {
                     })
                   }
                 >
-                  <Text style={styles.editBtn}>Edit</Text>
+                  <Text style={styles.editText}>Edit</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
-                  style={styles.addBtn}
                   onPress={() =>
-                    Alert.alert("Removing", "Are you sure you want to remove?", [
+                    Alert.alert("Remove Habit", "Are you sure?", [
                       { text: "Cancel" },
                       {
                         text: "Delete",
+                        style: "destructive",
                         onPress: async () => {
                           try {
                             const res = await fetch(
                               `${API_URL}/habits/${item.id}`,
                               {
                                 method: "DELETE",
-                                headers: {
-                                  Authorization: `Bearer ${token}`,
-                                },
+                                headers: { Authorization: `Bearer ${token}` },
                               },
                             );
                             if (!res.ok) {
                               const body = await res.json();
                               Alert.alert(
                                 "Error",
-                                body.error ?? "Failed to delete habit",
+                                body.error ?? "Failed to delete",
                               );
                               return;
                             }
@@ -196,7 +239,7 @@ export default function HabitsScreen() {
                     ])
                   }
                 >
-                  <Text style={styles.editBtn}>X</Text>
+                  <Text style={styles.deleteText}>✕</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -208,47 +251,146 @@ export default function HabitsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, paddingTop: 60 },
+  container: {
+    flex: 1,
+    backgroundColor: "#000603",
+    paddingTop: 60,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
   },
-  title: { fontSize: 28, fontWeight: "bold" },
-  todayDate: { fontSize: 13, color: "#888", marginTop: 2 },
-  headerActions: { flexDirection: "row", alignItems: "center", gap: 16 },
-  addBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#000",
+  eyebrow: {
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    color: "#3a7a5a",
+    marginBottom: 2,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "400",
+    color: "#98eaff",
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  iconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#085331",
     alignItems: "center",
     justifyContent: "center",
-  },
-  addBtnText: { color: "#fff", fontSize: 24, lineHeight: 28 },
-  logout: { color: "#888", fontSize: 14 },
-  habit: {
-    padding: 16,
     borderWidth: 1,
-    borderColor: "#eee",
-    borderRadius: 8,
-    marginBottom: 12,
+    borderColor: "rgba(152,234,255,0.12)",
+  },
+  iconBtnDanger: {
+    backgroundColor: "rgba(134,0,0,0.4)",
+    borderColor: "rgba(255,85,85,0.3)",
+  },
+  iconBtnText: {
+    color: "#98eaff",
+    fontSize: 22,
+    lineHeight: 26,
+  },
+  iconBtnTextDanger: {
+    color: "#ff5555",
+  },
+  progressCard: {
+    backgroundColor: "#085331",
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: -4, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  progressDate: {
+    fontSize: 15,
+    color: "#98eaff",
+    marginBottom: 10,
+  },
+  progressRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
-  habitName: { fontSize: 16, flex: 1 },
-  editBtn: { color: "#888", fontSize: 14 },
-  statusBtn: {
-    width: 32,
-    height: 32,
+  progressTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 4,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 4,
+    backgroundColor: "#98FF9D",
+  },
+  progressCount: {
+    fontSize: 13,
+    color: "#98FF9D",
+  },
+  list: {
+    paddingHorizontal: 20,
+    paddingBottom: 110,
+    gap: 10,
+  },
+  habitCard: {
+    backgroundColor: "#085331",
     borderRadius: 16,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: -4, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statusIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: "#000",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(152,234,255,0.1)",
+    flexShrink: 0,
   },
-  statusUnset: { borderWidth: 2, borderColor: "#ddd" },
-  statusDone: { backgroundColor: "#22c55e" },
-  statusMissed: { backgroundColor: "#ef4444" },
-  statusLabel: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  statusIconLabel: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  habitInfo: {
+    flex: 1,
+  },
+  habitName: {
+    fontSize: 17,
+    fontWeight: "400",
+  },
+  habitSub: {
+    fontSize: 12,
+    color: "#3a7a5a",
+    marginTop: 2,
+  },
+  editText: {
+    fontSize: 13,
+    color: "rgba(152,234,255,0.4)",
+  },
+  deleteText: {
+    fontSize: 16,
+    color: "#ff5555",
+  },
 });

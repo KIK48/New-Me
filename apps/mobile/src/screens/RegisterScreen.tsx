@@ -4,6 +4,7 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Image,
 } from "react-native";
 import React, { useState } from "react";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -56,32 +57,54 @@ export default function RegisterScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>New Me</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
+      <Image
+        source={require("../../assets/icon.png")}
+        style={styles.logo}
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Confirm Password"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        secureTextEntry
-      />
-      <TouchableOpacity style={styles.button} onPress={handleRegister}>
-        <Text style={styles.buttonText}>Sign Up</Text>
-      </TouchableOpacity>
+      <Text style={styles.title}>
+        <Text style={styles.new}>New </Text>
+        <Text style={styles.me}>Me</Text>
+      </Text>
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          placeholderTextColor="#98EAFF"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          placeholderTextColor="#98EAFF"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Confirm Password"
+          placeholderTextColor="#98EAFF"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry
+        />
+      </View>
       {error !== "" && <Text style={styles.error}>{error}</Text>}
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleRegister}
+        disabled={loading}
+      >
+        <Text style={styles.buttonText}>{loading ? "Creating..." : "Sign Up"}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.loginBtn}
+        onPress={() => navigation.navigate("Login")}
+      >
+        <Text style={styles.loginBtnText}>Log In</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -91,6 +114,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     padding: 24,
+    backgroundColor: "#000603",
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    borderRadius: 999,
+    alignSelf: "center",
+    marginBottom: 20,
+    overflow: "hidden",
   },
   title: {
     fontSize: 32,
@@ -98,30 +130,61 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     textAlign: "center",
   },
+  new: {
+    color: "#98FF9D",
+    textShadowColor: "#00ff04",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 20,
+  },
+  me: {
+    color: "#98EAFF",
+    textShadowColor: "#00c9fb",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 20,
+  },
+  inputContainer: {
+    padding: 20,
+    gap: 20,
+    marginBottom: 24,
+    shadowColor: "#00ff04",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 16,
+    elevation: 12,
+  },
   input: {
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: "#98EAFF",
     borderRadius: 8,
     padding: 12,
-    marginBottom: 26,
     fontSize: 16,
+    backgroundColor: "#001b0e",
+    color: "#98EAFF",
+  },
+  error: {
+    color: "#ff5555",
+    fontSize: 13,
+    textAlign: "center",
+    marginBottom: 12,
   },
   button: {
-    backgroundColor: "#000",
+    backgroundColor: "#009951",
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: "center",
   },
   buttonText: {
-    color: "#fff",
+    color: "#ffffff",
     fontSize: 16,
     fontWeight: "bold",
   },
-  error: {
-    color: "#ff0000",
-    fontSize: 32,
-    fontWeight: "bold",
-    marginBottom: 32,
-    textAlign: "center",
+  loginBtn: {
+    marginTop: 16,
+    alignSelf: "center",
+    padding: 8,
+  },
+  loginBtnText: {
+    color: "#98EAFF",
+    fontSize: 14,
   },
 });

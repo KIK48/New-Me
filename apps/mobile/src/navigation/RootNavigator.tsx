@@ -26,7 +26,11 @@ export default function RootNavigator() {
           <AppNavigator.Screen
             name="CreateHabit"
             component={CreateHabitScreen}
-            options={{ title: "New Habit" }}
+            options={{
+              presentation: "transparentModal",
+              headerShown: false,
+              animation: "slide_from_bottom",
+            }}
           />
           <AppNavigator.Screen
             name="EditHabit"
@@ -35,7 +39,7 @@ export default function RootNavigator() {
           />
         </AppNavigator.Navigator>
       ) : (
-        <AuthNavigator.Navigator>
+        <AuthNavigator.Navigator screenOptions={{ headerShown: false }}>
           <AuthNavigator.Screen name="Login" component={LoginScreen} />
           <AuthNavigator.Screen name="Register" component={RegisterScreen} />
         </AuthNavigator.Navigator>

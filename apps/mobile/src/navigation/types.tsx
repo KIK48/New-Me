@@ -6,6 +6,7 @@ export type AuthStack = {
 export type TabStack = {
   Home: undefined;
   Week: undefined;
+  Profile: undefined;
 };
 
 export type AppStack = {

@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  ScrollView,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
@@ -16,14 +15,16 @@ import {
   addDays,
   buildWeekDates,
   formatDate,
+  todayISO,
 } from "../utils/dates";
+import { CheckIcon, XIcon } from "../components/HabitIcons";
 
 type DayStatus = "UNSET" | "DONE" | "MISSED";
 
 // statuses[habitId][dayISO] = DayStatus
 type StatusMap = Record<string, Record<string, DayStatus>>;
 
-const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
+const DAY_LABELS = ["M", "Tu", "W", "Th", "F", "Sa", "Su"];
 
 function nextStatus(current: DayStatus): DayStatus {
   if (current === "UNSET") return "DONE";
@@ -39,6 +40,9 @@ export default function WeekScreen() {
 
   const [habits, setHabits] = useState<any[]>([]);
   const [statuses, setStatuses] = useState<StatusMap>({});
+
+  const today = todayISO();
+  const todayColIndex = weekDates.indexOf(today);
 
   useFocusEffect(
     useCallback(() => {
@@ -112,70 +116,84 @@ export default function WeekScreen() {
     }
   }
 
-  function cellStyle(status: DayStatus) {
-    if (status === "DONE") return [styles.cell, styles.cellDone];
-    if (status === "MISSED") return [styles.cell, styles.cellMissed];
-    return [styles.cell, styles.cellUnset];
-  }
-
-  function cellLabel(status: DayStatus) {
-    if (status === "DONE") return "✓";
-    if (status === "MISSED") return "✗";
-    return "";
-  }
-
   return (
     <View style={styles.container}>
-      {/* Week navigation */}
-      <View style={styles.weekNav}>
-        <TouchableOpacity
-          onPress={() => setMondayISO(addDays(mondayISO, -7))}
-          style={styles.navArrow}
-        >
-          <Text style={styles.navArrowText}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.weekLabel}>
-          {formatDate(mondayISO)} — {formatDate(sundayISO)}
-        </Text>
-        <TouchableOpacity
-          onPress={() => setMondayISO(addDays(mondayISO, 7))}
-          style={styles.navArrow}
-        >
-          <Text style={styles.navArrowText}>›</Text>
-        </TouchableOpacity>
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.eyebrow}>WEEKLY</Text>
+          <Text style={styles.title}>Weekly</Text>
+        </View>
       </View>
 
-      {/* Day label header */}
-      <View style={styles.row}>
-        <View style={styles.habitNameCol} />
-        {DAY_LABELS.map((label, i) => (
-          <View key={i} style={styles.cell}>
-            <Text style={styles.dayLabel}>{label}</Text>
+      {/* Date nav card */}
+      <View style={styles.dateCard}>
+        <View style={styles.dateRow}>
+          <View style={styles.datePill}>
+            <Text style={styles.datePillText}>{formatDate(mondayISO)}</Text>
           </View>
-        ))}
+          <TouchableOpacity
+            style={styles.arrowBtn}
+            onPress={() => setMondayISO(addDays(mondayISO, -7))}
+          >
+            <Text style={styles.arrowText}>‹</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.arrowBtn}
+            onPress={() => setMondayISO(addDays(mondayISO, 7))}
+          >
+            <Text style={styles.arrowText}>›</Text>
+          </TouchableOpacity>
+          <View style={styles.datePill}>
+            <Text style={styles.datePillText}>{formatDate(sundayISO)}</Text>
+          </View>
+        </View>
+
+        {/* Day headers — aligned to cells below */}
+        <View style={styles.dayHeaderRow}>
+          <View style={styles.habitNameCol} />
+          {DAY_LABELS.map((label, i) => (
+            <View key={i} style={styles.cellSlot}>
+              <Text
+                style={[
+                  styles.dayLabel,
+                  i === todayColIndex && styles.dayLabelToday,
+                ]}
+              >
+                {label}
+              </Text>
+            </View>
+          ))}
+        </View>
       </View>
 
       {/* Habit rows */}
       <FlatList
         data={habits}
         keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.list}
         renderItem={({ item }) => (
-          <View style={styles.row}>
+          <View style={styles.habitCard}>
             <Text style={styles.habitName} numberOfLines={1}>
               {item.name}
             </Text>
-            {weekDates.map((dayISO) => {
-              const status = statuses[item.id]?.[dayISO] ?? "UNSET";
-              return (
-                <TouchableOpacity
-                  key={dayISO}
-                  style={cellStyle(status)}
-                  onPress={() => handleCheckIn(item.id, dayISO)}
-                >
-                  <Text style={styles.cellText}>{cellLabel(status)}</Text>
-                </TouchableOpacity>
-              );
-            })}
+            <View style={styles.cellRow}>
+              {weekDates.map((dayISO, i) => {
+                const status = statuses[item.id]?.[dayISO] ?? "UNSET";
+                const isToday = i === todayColIndex;
+
+                return (
+                  <TouchableOpacity
+                    key={dayISO}
+                    style={[styles.cell, isToday && styles.cellToday]}
+                    onPress={() => handleCheckIn(item.id, dayISO)}
+                  >
+                    {status === "DONE" && <CheckIcon size={30} />}
+                    {status === "MISSED" && <XIcon size={30} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         )}
       />
@@ -183,42 +201,144 @@ export default function WeekScreen() {
   );
 }
 
-const CELL_SIZE = 36;
+const CELL_SIZE = 34;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, paddingTop: 60 },
-  weekNav: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 20,
+  container: {
+    flex: 1,
+    backgroundColor: "#000603",
+    paddingTop: 60,
   },
-  navArrow: { padding: 8 },
-  navArrowText: { fontSize: 28, color: "#000", lineHeight: 32 },
-  weekLabel: { fontSize: 15, fontWeight: "600" },
-  row: {
+  header: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  eyebrow: {
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    color: "#3a7a5a",
+    marginBottom: 2,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "400",
+    color: "#98FF9D",
+  },
+  dateCard: {
+    backgroundColor: "#085331",
+    borderRadius: 16,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingTop: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: -4, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  dateRow: {
     flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: 10,
+    gap: 8,
     marginBottom: 8,
   },
-  habitNameCol: { width: 90 },
+  datePill: {
+    flex: 1,
+    backgroundColor: "#000",
+    borderRadius: 10,
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+  datePillText: {
+    fontSize: 11,
+    color: "#98eaff",
+  },
+  arrowBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  arrowText: {
+    fontSize: 20,
+    color: "#98eaff",
+    lineHeight: 24,
+  },
+  dayHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+  },
+  habitNameCol: {
+    width: 80,
+    flexShrink: 0,
+  },
+  cellSlot: {
+    width: CELL_SIZE,
+    alignItems: "center",
+    marginHorizontal: 2,
+  },
+  dayLabel: {
+    fontSize: 11,
+    color: "#98eaff",
+    fontWeight: "400",
+  },
+  dayLabelToday: {
+    color: "#98FF9D",
+    fontWeight: "600",
+  },
+  list: {
+    paddingHorizontal: 16,
+    paddingBottom: 110,
+    gap: 8,
+  },
+  habitCard: {
+    backgroundColor: "#085331",
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: -4, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   habitName: {
-    width: 90,
+    width: 80,
     fontSize: 13,
-    color: "#333",
+    color: "#98eaff",
+    flexShrink: 0,
     paddingRight: 4,
+  },
+  cellRow: {
+    flexDirection: "row",
+    flex: 1,
+    justifyContent: "space-between",
   },
   cell: {
     width: CELL_SIZE,
     height: CELL_SIZE,
-    borderRadius: 6,
+    borderRadius: 8,
+    backgroundColor: "#000",
     alignItems: "center",
     justifyContent: "center",
-    marginHorizontal: 2,
+    borderWidth: 1,
+    borderColor: "rgba(152,234,255,0.08)",
   },
-  cellUnset: { borderWidth: 1.5, borderColor: "#e0e0e0" },
-  cellDone: { backgroundColor: "#22c55e" },
-  cellMissed: { backgroundColor: "#ef4444" },
-  cellText: { color: "#fff", fontSize: 14, fontWeight: "bold" },
-  dayLabel: { fontSize: 11, color: "#888", fontWeight: "600" },
+  cellToday: {
+    borderWidth: 1.5,
+    borderColor: "rgba(152,234,255,0.45)",
+  },
+  cellLabel: {
+    fontSize: 14,
+    fontWeight: "bold",
+  },
 });

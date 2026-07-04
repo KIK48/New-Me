@@ -30,7 +30,7 @@ Follow this every time the user says "submit", "release", "push to GitHub", or s
 
 ### Steps (in order)
 
-1. **Update `CHANGELOG.md`** — move items from `[Unreleased]` into a new `[X.Y.Z] — YYYY-MM-DD` section. Keep `[Unreleased]` at the top, empty.
+1. **Update `docs/CHANGELOG.md`** — move items from `[Unreleased]` into a new `[X.Y.Z] — YYYY-MM-DD` section. Keep `[Unreleased]` at the top, empty.
 2. **Bump `apps/mobile/app.json` version** — match the changelog version.
 3. **Commit** both files onto the feature branch (can be part of the same PR commit or a separate one).
 4. **Open a PR** if not already open — include issue reference and test checklist.

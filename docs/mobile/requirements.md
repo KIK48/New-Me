@@ -9,11 +9,24 @@ Stack: React Native
 | Registration | ✅ Working |
 | Login | ✅ Working |
 | Read/list habits | ✅ Working |
-| Create habit | ✅ Working |
+| Create habit | ✅ Working (bottom-sheet modal, includes notes field) |
 | Update habit | ✅ Working |
 | Delete habit | ✅ Working |
 | Daily check-in (today) | ✅ Working |
 | Weekly check-in view | ✅ Working |
+| Dark design system | ✅ Done (all screens) |
+| Profile screen | ✅ Done (stats, dot bars, sign out) |
+| Custom tab bar | ✅ Done (floating, Feather icons) |
+| SVG check/X icons | ✅ Done (react-native-svg) |
+| Loading states (login/register) | ❌ Not built |
+| Real streaks | ❌ Not built (mock on Profile) |
+| Reminders / push notifications | ❌ Not built |
+| Progress analytics | ❌ Partial (Profile shows basic stats) |
+| Habit rules / frequency | ❌ Not built |
+| Individual habit detail view | ❌ Not built |
+| Home → Dashboard restructure | ❌ Not built |
+| Profile → Account settings | ❌ Not built |
+| Animations | ❌ Not built |
 
 ## Endpoint Verification Audit (Story #28)
 

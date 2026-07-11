@@ -4,9 +4,10 @@ type DayStatus = "DONE" | "MISSED" | "UNSET";
 
 // Mirrors FrequencyType + frequencyCount fields in the DB schema.
 export type FrequencyRule =
-  | { type: "DAILY";   count: number } // times per day (streak still per-day)
-  | { type: "WEEKLY";  count: number } // days per week
-  | { type: "MONTHLY"; count: number }; // times per month
+  | { type: "DAILY";   count: number }
+  | { type: "WEEKLY";  count: number }
+  | { type: "MONTHLY"; count: number }
+  | { type: "YEARLY";  count: number };
 
 export function calculateStreak(
   days: Record<string, DayStatus>,
@@ -20,6 +21,8 @@ export function calculateStreak(
       return timesPerWeekStreak(days, today, rule.count);
     case "MONTHLY":
       return timesPerMonthStreak(days, today, rule.count);
+    case "YEARLY":
+      return timesPerYearStreak(days, today, rule.count);
   }
 }
 
@@ -90,6 +93,32 @@ function timesPerMonthStreak(
       // current month: only fail if can't possibly reach target
       const dayOfMonth = new Date(today + "T00:00:00").getDate();
       const daysLeft = daysInMonth - dayOfMonth;
+      if (doneCount + daysLeft < times) break;
+      if (doneCount >= times) streak++;
+    } else {
+      if (doneCount >= times) streak++;
+      else break;
+    }
+  }
+  return streak;
+}
+
+// Consecutive years where the habit was done at least `times` times
+function timesPerYearStreak(
+  days: Record<string, DayStatus>,
+  today: string,
+  times: number,
+): number {
+  const todayYear = new Date(today + "T00:00:00").getFullYear();
+  let streak = 0;
+  for (let y = todayYear; y >= todayYear - 10; y--) {
+    let doneCount = 0;
+    for (const [date, status] of Object.entries(days)) {
+      if (date.startsWith(`${y}-`) && date <= today && status === "DONE") doneCount++;
+    }
+    if (y === todayYear) {
+      // Current year: only fail if impossible to reach target
+      const daysLeft = (new Date(`${y}-12-31T00:00:00`).getTime() - new Date(today + "T00:00:00").getTime()) / 86400000;
       if (doneCount + daysLeft < times) break;
       if (doneCount >= times) streak++;
     } else {

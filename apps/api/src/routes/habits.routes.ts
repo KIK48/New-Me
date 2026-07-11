@@ -14,7 +14,7 @@ router.post("/", async (req, res) => {
     return res.status(400).json({ error: "name is required" });
   }
 
-  const validTypes = ["DAILY", "WEEKLY", "MONTHLY"];
+  const validTypes = ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"];
   const resolvedType = validTypes.includes(frequencyType) ? frequencyType : "DAILY";
   const resolvedCount = typeof frequencyCount === "number" && frequencyCount >= 1
     ? Math.floor(frequencyCount)
@@ -72,7 +72,7 @@ router.put("/:id", async (req, res) => {
     data.notes = null;
   }
 
-  const validTypes = ["DAILY", "WEEKLY", "MONTHLY"];
+  const validTypes = ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"];
   if (typeof frequencyType === "string" && validTypes.includes(frequencyType)) {
     data.frequencyType = frequencyType as any;
   }

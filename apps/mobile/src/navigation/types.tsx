@@ -9,7 +9,7 @@ export type TabStack = {
   Profile: undefined;
 };
 
-export type FrequencyType = "DAILY" | "WEEKLY" | "MONTHLY";
+export type FrequencyType = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
 
 export type HabitFrequency = {
   type: FrequencyType;

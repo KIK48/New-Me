@@ -32,7 +32,9 @@ function freqLabel(frequency: { type: string; count: number }): string {
     return frequency.count === 1 ? "Daily" : `${frequency.count}× per day`;
   if (frequency.type === "WEEKLY")
     return frequency.count === 7 ? "Every day" : `${frequency.count}× per week`;
-  return `${frequency.count}× per month`;
+  if (frequency.type === "MONTHLY")
+    return frequency.count === 1 ? "Once a month" : `${frequency.count}× per month`;
+  return frequency.count === 1 ? "Once a year" : `${frequency.count}× per year`;
 }
 
 export default function HabitDetailScreen({ route, navigation }: Props) {

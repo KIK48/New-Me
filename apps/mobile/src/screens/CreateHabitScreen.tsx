@@ -22,12 +22,14 @@ const PERIOD_OPTIONS: { value: FrequencyType; label: string }[] = [
   { value: "DAILY",   label: "Daily" },
   { value: "WEEKLY",  label: "Weekly" },
   { value: "MONTHLY", label: "Monthly" },
+  { value: "YEARLY",  label: "Yearly" },
 ];
 
 function countRange(type: FrequencyType): number[] {
   if (type === "DAILY")   return [1, 2, 3, 4, 5];
   if (type === "WEEKLY")  return [1, 2, 3, 4, 5, 6, 7];
-  return Array.from({ length: 28 }, (_, i) => i + 1);
+  if (type === "MONTHLY") return Array.from({ length: 28 }, (_, i) => i + 1);
+  return Array.from({ length: 52 }, (_, i) => i + 1);
 }
 
 export default function CreateHabitScreen({ navigation }: Props) {

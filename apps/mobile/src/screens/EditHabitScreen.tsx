@@ -20,18 +20,21 @@ const PERIOD_OPTIONS: { value: FrequencyType; label: string }[] = [
   { value: "DAILY",   label: "Daily" },
   { value: "WEEKLY",  label: "Weekly" },
   { value: "MONTHLY", label: "Monthly" },
+  { value: "YEARLY",  label: "Yearly" },
 ];
 
 function countRange(type: FrequencyType): number[] {
   if (type === "DAILY")   return [1, 2, 3, 4, 5];
   if (type === "WEEKLY")  return [1, 2, 3, 4, 5, 6, 7];
-  return Array.from({ length: 28 }, (_, i) => i + 1);
+  if (type === "MONTHLY") return Array.from({ length: 28 }, (_, i) => i + 1);
+  return Array.from({ length: 52 }, (_, i) => i + 1); // yearly: up to 52 times
 }
 
 function countLabel(type: FrequencyType, count: number): string {
   if (type === "DAILY")   return count === 1 ? "once a day" : `${count}× a day`;
   if (type === "WEEKLY")  return count === 1 ? "1 day a week" : `${count} days a week`;
-  return count === 1 ? "once a month" : `${count}× a month`;
+  if (type === "MONTHLY") return count === 1 ? "once a month" : `${count}× a month`;
+  return count === 1 ? "once a year" : `${count}× a year`;
 }
 
 export default function EditHabitScreen({ navigation, route }: Props) {

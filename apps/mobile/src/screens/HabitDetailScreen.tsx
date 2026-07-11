@@ -13,6 +13,7 @@ import { useAuth } from "../context/AuthContext";
 import { AppStack } from "../navigation/types";
 import { API_URL } from "../api/client";
 import { todayISO, addDays } from "../utils/dates";
+import { calculateStreak } from "../utils/streak";
 
 type Props = NativeStackScreenProps<AppStack, "HabitDetail">;
 type DayStatus = "UNSET" | "DONE" | "MISSED";
@@ -58,6 +59,7 @@ export default function HabitDetailScreen({ route, navigation }: Props) {
   const total = Object.values(allDays).filter((s) => s !== "UNSET").length;
   const totalDone = Object.values(allDays).filter((s) => s === "DONE").length;
   const pct = total > 0 ? Math.round((totalDone / total) * 100) : 0;
+  const streak = calculateStreak(allDays);
 
   async function handleDelete() {
     Alert.alert("Delete Habit", `Remove "${name}" and all its history?`, [
@@ -96,8 +98,12 @@ export default function HabitDetailScreen({ route, navigation }: Props) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Stats row */}
-        <View style={styles.statsRow}>
+        {/* Stats grid */}
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{streak}</Text>
+            <Text style={styles.statLabel}>day streak</Text>
+          </View>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{done30}</Text>
             <Text style={styles.statLabel}>last 30 days</Text>
@@ -204,12 +210,13 @@ const styles = StyleSheet.create({
     paddingBottom: 110,
     gap: 12,
   },
-  statsRow: {
+  statsGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
   },
   statCard: {
-    flex: 1,
+    width: "47.5%",
     backgroundColor: "#085331",
     borderRadius: 16,
     padding: 14,

@@ -11,16 +11,24 @@ import {
   Platform,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { AppStack } from "../navigation/types";
+import { AppStack, Frequency } from "../navigation/types";
 import { useAuth } from "../context/AuthContext";
 import { API_URL } from "../api/client";
 
 type Props = NativeStackScreenProps<AppStack, "CreateHabit">;
 
+const FREQUENCY_OPTIONS: { value: Frequency; label: string }[] = [
+  { value: "DAILY",          label: "Daily" },
+  { value: "WEEKDAYS",       label: "Weekdays" },
+  { value: "THREE_PER_WEEK", label: "3×/wk" },
+  { value: "TWO_PER_WEEK",   label: "2×/wk" },
+];
+
 export default function CreateHabitScreen({ navigation }: Props) {
   const { token } = useAuth();
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
+  const [frequency, setFrequency] = useState<Frequency>("DAILY");
   const [loading, setLoading] = useState(false);
 
   async function handleSave() {
@@ -33,7 +41,7 @@ export default function CreateHabitScreen({ navigation }: Props) {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name: name.trim(), notes: notes.trim() || undefined }),
+        body: JSON.stringify({ name: name.trim(), notes: notes.trim() || undefined, frequency }),
       });
       if (!res.ok) {
         const body = await res.json();
@@ -89,6 +97,21 @@ export default function CreateHabitScreen({ navigation }: Props) {
           onSubmitEditing={handleSave}
           maxLength={200}
         />
+
+        <Text style={styles.freqLabel}>FREQUENCY</Text>
+        <View style={styles.freqRow}>
+          {FREQUENCY_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.value}
+              style={[styles.freqBtn, frequency === opt.value && styles.freqBtnActive]}
+              onPress={() => setFrequency(opt.value)}
+            >
+              <Text style={[styles.freqBtnText, frequency === opt.value && styles.freqBtnTextActive]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         <TouchableOpacity
           style={[styles.saveBtn, !name.trim() && styles.saveBtnDisabled]}
@@ -189,5 +212,38 @@ const styles = StyleSheet.create({
   cancelBtnText: {
     color: "#3a7a5a",
     fontSize: 14,
+  },
+  freqLabel: {
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    color: "#3a7a5a",
+    marginBottom: 8,
+  },
+  freqRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 20,
+  },
+  freqBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(152,234,255,0.15)",
+    backgroundColor: "#001b0e",
+    alignItems: "center",
+  },
+  freqBtnActive: {
+    backgroundColor: "#085331",
+    borderColor: "#009951",
+  },
+  freqBtnText: {
+    fontSize: 12,
+    color: "#3a7a5a",
+  },
+  freqBtnTextActive: {
+    color: "#98FF9D",
+    fontWeight: "600",
   },
 });

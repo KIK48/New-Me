@@ -14,7 +14,7 @@ import {
   getMondayISO,
   buildWeekDates,
 } from "../utils/dates";
-import { calculateStreak } from "../utils/streak";
+import { calculateStreak, FrequencyRule } from "../utils/streak";
 
 type DayStatus = "UNSET" | "DONE" | "MISSED";
 
@@ -93,7 +93,8 @@ export default function ProfileScreen() {
       .forEach((d: any) => {
         habitDayMap[d.date?.split("T")[0]] = d.status;
       });
-    return Math.max(best, calculateStreak(habitDayMap));
+    const rule = { type: (h.frequency ?? "DAILY") } as FrequencyRule;
+    return Math.max(best, calculateStreak(habitDayMap, rule));
   }, 0);
 
   const stats = [

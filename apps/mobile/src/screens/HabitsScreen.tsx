@@ -185,6 +185,7 @@ export default function HabitsScreen() {
                     id: item.id,
                     name: item.name,
                     notes: item.notes,
+                    frequency: item.frequency ?? "DAILY",
                   })
                 }
               >
@@ -209,6 +210,7 @@ export default function HabitsScreen() {
                       id: item.id,
                       name: item.name,
                       notes: item.notes,
+                      frequency: item.frequency ?? "DAILY",
                     })
                   }
                 >

@@ -8,17 +8,24 @@ const router = Router();
 // CREATE habit — always owned by the authenticated user
 router.post("/", async (req, res) => {
   const { userId } = (req as AuthRequest).user;
-  const { name, notes } = req.body;
+  const { name, notes, frequency } = req.body;
 
   if (!name || typeof name !== "string" || !name.trim()) {
     return res.status(400).json({ error: "name is required" });
   }
+
+  const validFrequencies = ["DAILY", "WEEKDAYS", "THREE_PER_WEEK", "TWO_PER_WEEK"];
+  const resolvedFrequency =
+    typeof frequency === "string" && validFrequencies.includes(frequency)
+      ? frequency
+      : "DAILY";
 
   const habit = await prisma.habit.create({
     data: {
       userId,
       name: name.trim(),
       notes: typeof notes === "string" && notes.trim() ? notes.trim() : null,
+      frequency: resolvedFrequency as any,
       startWeek: startOfWeekMonday(new Date()),
       endWeek: null,
     },
@@ -43,7 +50,7 @@ router.get("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
   const { userId } = (req as unknown as AuthRequest).user;
   const { id } = req.params;
-  const { name, notes } = req.body;
+  const { name, notes, frequency } = req.body;
 
   // Type the update data using Prisma's generated args type
   type UpdateData = Parameters<typeof prisma.habit.update>[0]["data"];
@@ -62,6 +69,11 @@ router.put("/:id", async (req, res) => {
     data.notes = trimmedNotes ? trimmedNotes : null;
   } else if (notes === null) {
     data.notes = null;
+  }
+
+  const validFrequencies = ["DAILY", "WEEKDAYS", "THREE_PER_WEEK", "TWO_PER_WEEK"];
+  if (typeof frequency === "string" && validFrequencies.includes(frequency)) {
+    data.frequency = frequency as any;
   }
 
   if (Object.keys(data).length === 0) {

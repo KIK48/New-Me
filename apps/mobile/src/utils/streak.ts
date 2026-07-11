@@ -2,60 +2,30 @@ import { todayISO, addDays } from "./dates";
 
 type DayStatus = "DONE" | "MISSED" | "UNSET";
 
-// Mirrors the Frequency enum in the DB schema.
-// Add new cases here as new frequency options are introduced.
+// Mirrors FrequencyType + frequencyCount fields in the DB schema.
 export type FrequencyRule =
-  | { type: "DAILY" }
-  | { type: "WEEKDAYS" }
-  | { type: "THREE_PER_WEEK" }
-  | { type: "TWO_PER_WEEK" };
+  | { type: "DAILY";   count: number } // times per day (streak still per-day)
+  | { type: "WEEKLY";  count: number } // days per week
+  | { type: "MONTHLY"; count: number }; // times per month
 
 export function calculateStreak(
   days: Record<string, DayStatus>,
-  rule: FrequencyRule = { type: "DAILY" },
+  rule: FrequencyRule = { type: "DAILY", count: 1 },
 ): number {
   const today = todayISO();
   switch (rule.type) {
     case "DAILY":
       return dailyStreak(days, today);
-    case "WEEKDAYS":
-      return weekdayStreak(days, today);
-    case "THREE_PER_WEEK":
-      return timesPerWeekStreak(days, today, 3);
-    case "TWO_PER_WEEK":
-      return timesPerWeekStreak(days, today, 2);
+    case "WEEKLY":
+      return timesPerWeekStreak(days, today, rule.count);
+    case "MONTHLY":
+      return timesPerMonthStreak(days, today, rule.count);
   }
 }
 
 // Returns 0 (Sun) through 6 (Sat) for a local date string
 function dayOfWeek(iso: string): number {
   return new Date(iso + "T00:00:00").getDay();
-}
-
-// Weekdays only — Sat/Sun are skipped (treated as grace days)
-function weekdayStreak(days: Record<string, DayStatus>, today: string): number {
-  const todayStatus = days[today] ?? "UNSET";
-  const todayDow = dayOfWeek(today);
-  const isWeekend = todayDow === 0 || todayDow === 6;
-
-  if (!isWeekend && todayStatus === "MISSED") return 0;
-
-  // If today is a weekend or unset weekday, start from yesterday
-  const startOffset = !isWeekend && todayStatus === "DONE" ? 0 : -1;
-
-  let streak = 0;
-  for (let i = startOffset; i >= -365; i--) {
-    const date = addDays(today, i);
-    const dow = dayOfWeek(date);
-    if (dow === 0 || dow === 6) continue; // skip weekends
-    const status = days[date] ?? "MISSED";
-    if (status === "DONE") {
-      streak++;
-    } else {
-      break;
-    }
-  }
-  return streak;
 }
 
 // Consecutive weeks where the habit was done at least `times` times
@@ -92,6 +62,39 @@ function timesPerWeekStreak(
       } else {
         break;
       }
+    }
+  }
+  return streak;
+}
+
+// Consecutive months where the habit was done at least `times` times
+function timesPerMonthStreak(
+  days: Record<string, DayStatus>,
+  today: string,
+  times: number,
+): number {
+  const [todayYear, todayMonth] = today.split("-").map(Number);
+  let streak = 0;
+  for (let m = 0; m < 24; m++) {
+    let y = todayYear;
+    let mo = todayMonth - m;
+    while (mo <= 0) { mo += 12; y--; }
+    const daysInMonth = new Date(y, mo, 0).getDate();
+    let doneCount = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      if (date > today) continue;
+      if ((days[date] ?? "UNSET") === "DONE") doneCount++;
+    }
+    if (m === 0) {
+      // current month: only fail if can't possibly reach target
+      const dayOfMonth = new Date(today + "T00:00:00").getDate();
+      const daysLeft = daysInMonth - dayOfMonth;
+      if (doneCount + daysLeft < times) break;
+      if (doneCount >= times) streak++;
+    } else {
+      if (doneCount >= times) streak++;
+      else break;
     }
   }
   return streak;

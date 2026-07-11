@@ -8,24 +8,25 @@ const router = Router();
 // CREATE habit — always owned by the authenticated user
 router.post("/", async (req, res) => {
   const { userId } = (req as AuthRequest).user;
-  const { name, notes, frequency } = req.body;
+  const { name, notes, frequencyType, frequencyCount } = req.body;
 
   if (!name || typeof name !== "string" || !name.trim()) {
     return res.status(400).json({ error: "name is required" });
   }
 
-  const validFrequencies = ["DAILY", "WEEKDAYS", "THREE_PER_WEEK", "TWO_PER_WEEK"];
-  const resolvedFrequency =
-    typeof frequency === "string" && validFrequencies.includes(frequency)
-      ? frequency
-      : "DAILY";
+  const validTypes = ["DAILY", "WEEKLY", "MONTHLY"];
+  const resolvedType = validTypes.includes(frequencyType) ? frequencyType : "DAILY";
+  const resolvedCount = typeof frequencyCount === "number" && frequencyCount >= 1
+    ? Math.floor(frequencyCount)
+    : 1;
 
   const habit = await prisma.habit.create({
     data: {
       userId,
       name: name.trim(),
       notes: typeof notes === "string" && notes.trim() ? notes.trim() : null,
-      frequency: resolvedFrequency as any,
+      frequencyType: resolvedType as any,
+      frequencyCount: resolvedCount,
       startWeek: startOfWeekMonday(new Date()),
       endWeek: null,
     },
@@ -50,7 +51,7 @@ router.get("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
   const { userId } = (req as unknown as AuthRequest).user;
   const { id } = req.params;
-  const { name, notes, frequency } = req.body;
+  const { name, notes, frequencyType, frequencyCount } = req.body;
 
   // Type the update data using Prisma's generated args type
   type UpdateData = Parameters<typeof prisma.habit.update>[0]["data"];
@@ -71,9 +72,12 @@ router.put("/:id", async (req, res) => {
     data.notes = null;
   }
 
-  const validFrequencies = ["DAILY", "WEEKDAYS", "THREE_PER_WEEK", "TWO_PER_WEEK"];
-  if (typeof frequency === "string" && validFrequencies.includes(frequency)) {
-    data.frequency = frequency as any;
+  const validTypes = ["DAILY", "WEEKLY", "MONTHLY"];
+  if (typeof frequencyType === "string" && validTypes.includes(frequencyType)) {
+    data.frequencyType = frequencyType as any;
+  }
+  if (typeof frequencyCount === "number" && frequencyCount >= 1) {
+    data.frequencyCount = Math.floor(frequencyCount);
   }
 
   if (Object.keys(data).length === 0) {

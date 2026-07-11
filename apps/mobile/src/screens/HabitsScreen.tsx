@@ -185,7 +185,7 @@ export default function HabitsScreen() {
                     id: item.id,
                     name: item.name,
                     notes: item.notes,
-                    frequency: item.frequency ?? "DAILY",
+                    frequency: { type: item.frequencyType ?? "DAILY", count: item.frequencyCount ?? 1 },
                   })
                 }
               >
@@ -210,7 +210,7 @@ export default function HabitsScreen() {
                       id: item.id,
                       name: item.name,
                       notes: item.notes,
-                      frequency: item.frequency ?? "DAILY",
+                      frequency: { type: item.frequencyType ?? "DAILY", count: item.frequencyCount ?? 1 },
                     })
                   }
                 >

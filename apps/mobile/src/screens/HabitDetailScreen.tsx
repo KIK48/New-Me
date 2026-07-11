@@ -13,7 +13,7 @@ import { useAuth } from "../context/AuthContext";
 import { AppStack } from "../navigation/types";
 import { API_URL } from "../api/client";
 import { todayISO, addDays } from "../utils/dates";
-import { calculateStreak, FrequencyRule } from "../utils/streak";
+import { calculateStreak } from "../utils/streak";
 
 type Props = NativeStackScreenProps<AppStack, "HabitDetail">;
 type DayStatus = "UNSET" | "DONE" | "MISSED";
@@ -27,12 +27,13 @@ function lastNDays(n: number): string[] {
   return days;
 }
 
-const FREQ_LABELS: Record<string, string> = {
-  DAILY:          "Daily",
-  WEEKDAYS:       "Weekdays",
-  THREE_PER_WEEK: "3× per week",
-  TWO_PER_WEEK:   "2× per week",
-};
+function freqLabel(frequency: { type: string; count: number }): string {
+  if (frequency.type === "DAILY")
+    return frequency.count === 1 ? "Daily" : `${frequency.count}× per day`;
+  if (frequency.type === "WEEKLY")
+    return frequency.count === 7 ? "Every day" : `${frequency.count}× per week`;
+  return `${frequency.count}× per month`;
+}
 
 export default function HabitDetailScreen({ route, navigation }: Props) {
   const { id, name, notes, frequency } = route.params;
@@ -66,7 +67,7 @@ export default function HabitDetailScreen({ route, navigation }: Props) {
   const total = Object.values(allDays).filter((s) => s !== "UNSET").length;
   const totalDone = Object.values(allDays).filter((s) => s === "DONE").length;
   const pct = total > 0 ? Math.round((totalDone / total) * 100) : 0;
-  const streak = calculateStreak(allDays, { type: frequency } as FrequencyRule);
+  const streak = calculateStreak(allDays, { type: frequency.type, count: frequency.count });
 
   async function handleDelete() {
     Alert.alert("Delete Habit", `Remove "${name}" and all its history?`, [
@@ -102,7 +103,7 @@ export default function HabitDetailScreen({ route, navigation }: Props) {
         </TouchableOpacity>
         <Text style={styles.eyebrow}>HABIT</Text>
         <Text style={styles.title} numberOfLines={2}>{name}</Text>
-        <Text style={styles.freqBadge}>{FREQ_LABELS[frequency] ?? "Daily"}</Text>
+        <Text style={styles.freqBadge}>{freqLabel(frequency)}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

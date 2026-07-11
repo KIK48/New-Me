@@ -23,7 +23,8 @@ model Habit {
   userId    String                          // owner of this habit
   name      String
   notes     String?
-  frequency Frequency @default(DAILY)
+  frequencyType  FrequencyType @default(DAILY)
+  frequencyCount Int           @default(1)
 
   startWeek DateTime
   endWeek   DateTime?
@@ -52,9 +53,8 @@ enum DayStatus {
   MISSED  // X
 }
 
-enum Frequency {
-  DAILY          // every day
-  WEEKDAYS       // Mon–Fri only
-  THREE_PER_WEEK // 3 times per week
-  TWO_PER_WEEK   // 2 times per week
+enum FrequencyType {
+  DAILY
+  WEEKLY
+  MONTHLY
 }

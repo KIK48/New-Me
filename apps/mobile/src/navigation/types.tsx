@@ -9,11 +9,16 @@ export type TabStack = {
   Profile: undefined;
 };
 
-export type Frequency = "DAILY" | "WEEKDAYS" | "THREE_PER_WEEK" | "TWO_PER_WEEK";
+export type FrequencyType = "DAILY" | "WEEKLY" | "MONTHLY";
+
+export type HabitFrequency = {
+  type: FrequencyType;
+  count: number; // times per day / days per week / times per month
+};
 
 export type AppStack = {
   Tabs: undefined;
   CreateHabit: undefined;
-  EditHabit: { id: string; name: string; notes?: string | null; frequency: Frequency };
-  HabitDetail: { id: string; name: string; notes?: string | null; frequency: Frequency };
+  EditHabit: { id: string; name: string; notes?: string | null; frequency: HabitFrequency };
+  HabitDetail: { id: string; name: string; notes?: string | null; frequency: HabitFrequency };
 };

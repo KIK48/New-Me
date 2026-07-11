@@ -36,7 +36,7 @@ export default function RootNavigator() {
           <AppNavigator.Screen
             name="EditHabit"
             component={EditHabitScreen}
-            options={{ title: "Edit Habit" }}
+            options={{ headerShown: false }}
           />
           <AppNavigator.Screen
             name="HabitDetail"

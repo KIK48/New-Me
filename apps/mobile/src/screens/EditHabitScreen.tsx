@@ -10,26 +10,43 @@ import {
   ScrollView,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { AppStack, Frequency } from "../navigation/types";
+import { AppStack, FrequencyType, HabitFrequency } from "../navigation/types";
 import { useAuth } from "../context/AuthContext";
 import { API_URL } from "../api/client";
 
 type Props = NativeStackScreenProps<AppStack, "EditHabit">;
 
-const FREQUENCY_OPTIONS: { value: Frequency; label: string }[] = [
-  { value: "DAILY",          label: "Daily" },
-  { value: "WEEKDAYS",       label: "Weekdays" },
-  { value: "THREE_PER_WEEK", label: "3×/wk" },
-  { value: "TWO_PER_WEEK",   label: "2×/wk" },
+const PERIOD_OPTIONS: { value: FrequencyType; label: string }[] = [
+  { value: "DAILY",   label: "Daily" },
+  { value: "WEEKLY",  label: "Weekly" },
+  { value: "MONTHLY", label: "Monthly" },
 ];
+
+function countRange(type: FrequencyType): number[] {
+  if (type === "DAILY")   return [1, 2, 3, 4, 5];
+  if (type === "WEEKLY")  return [1, 2, 3, 4, 5, 6, 7];
+  return Array.from({ length: 28 }, (_, i) => i + 1);
+}
+
+function countLabel(type: FrequencyType, count: number): string {
+  if (type === "DAILY")   return count === 1 ? "once a day" : `${count}× a day`;
+  if (type === "WEEKLY")  return count === 1 ? "1 day a week" : `${count} days a week`;
+  return count === 1 ? "once a month" : `${count}× a month`;
+}
 
 export default function EditHabitScreen({ navigation, route }: Props) {
   const { token } = useAuth();
-  const { id, name: initialName, notes: initialNotes, frequency: initialFrequency } = route.params;
+  const { id, name: initialName, notes: initialNotes, frequency: initialFreq } = route.params;
   const [name, setName] = useState(initialName);
   const [notes, setNotes] = useState(initialNotes ?? "");
-  const [frequency, setFrequency] = useState<Frequency>(initialFrequency);
+  const [freqType, setFreqType] = useState<FrequencyType>(initialFreq.type);
+  const [freqCount, setFreqCount] = useState(initialFreq.count);
   const [loading, setLoading] = useState(false);
+
+  function handlePeriodChange(type: FrequencyType) {
+    setFreqType(type);
+    setFreqCount(1); // reset count when period changes
+  }
 
   async function handleSave() {
     if (!name.trim()) return;
@@ -44,7 +61,8 @@ export default function EditHabitScreen({ navigation, route }: Props) {
         body: JSON.stringify({
           name: name.trim(),
           notes: notes.trim() || null,
-          frequency,
+          frequencyType: freqType,
+          frequencyCount: freqCount,
         }),
       });
       if (!res.ok) {
@@ -59,6 +77,8 @@ export default function EditHabitScreen({ navigation, route }: Props) {
       setLoading(false);
     }
   }
+
+  const counts = countRange(freqType);
 
   return (
     <View style={styles.container}>
@@ -78,7 +98,7 @@ export default function EditHabitScreen({ navigation, route }: Props) {
           onChangeText={setName}
           placeholder="Habit name"
           placeholderTextColor="#3a7a5a"
-          autoFocus
+          keyboardAppearance="dark"
           returnKeyType="next"
           maxLength={80}
         />
@@ -90,25 +110,49 @@ export default function EditHabitScreen({ navigation, route }: Props) {
           onChangeText={setNotes}
           placeholder="Optional notes"
           placeholderTextColor="#3a7a5a"
+          keyboardAppearance="dark"
           returnKeyType="done"
           maxLength={200}
           multiline
         />
 
         <Text style={styles.fieldLabel}>FREQUENCY</Text>
-        <View style={styles.freqRow}>
-          {FREQUENCY_OPTIONS.map((opt) => (
+
+        {/* Period selector */}
+        <View style={styles.periodRow}>
+          {PERIOD_OPTIONS.map((opt) => (
             <TouchableOpacity
               key={opt.value}
-              style={[styles.freqBtn, frequency === opt.value && styles.freqBtnActive]}
-              onPress={() => setFrequency(opt.value)}
+              style={[styles.periodBtn, freqType === opt.value && styles.periodBtnActive]}
+              onPress={() => handlePeriodChange(opt.value)}
             >
-              <Text style={[styles.freqBtnText, frequency === opt.value && styles.freqBtnTextActive]}>
+              <Text style={[styles.periodBtnText, freqType === opt.value && styles.periodBtnTextActive]}>
                 {opt.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Count selector */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.countRow}
+        >
+          {counts.map((n) => (
+            <TouchableOpacity
+              key={n}
+              style={[styles.countBtn, freqCount === n && styles.countBtnActive]}
+              onPress={() => setFreqCount(n)}
+            >
+              <Text style={[styles.countBtnText, freqCount === n && styles.countBtnTextActive]}>
+                {n}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <Text style={styles.freqSummary}>{countLabel(freqType, freqCount)}</Text>
 
         <TouchableOpacity
           style={[styles.saveBtn, !name.trim() && styles.saveBtnDisabled]}
@@ -179,12 +223,12 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: "top",
   },
-  freqRow: {
+  periodRow: {
     flexDirection: "row",
     gap: 8,
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  freqBtn: {
+  periodBtn: {
     flex: 1,
     paddingVertical: 10,
     borderRadius: 10,
@@ -193,17 +237,50 @@ const styles = StyleSheet.create({
     backgroundColor: "#05170e",
     alignItems: "center",
   },
-  freqBtnActive: {
+  periodBtnActive: {
     backgroundColor: "#085331",
     borderColor: "#009951",
   },
-  freqBtnText: {
-    fontSize: 12,
+  periodBtnText: {
+    fontSize: 13,
     color: "#3a7a5a",
   },
-  freqBtnTextActive: {
+  periodBtnTextActive: {
     color: "#98FF9D",
     fontWeight: "600",
+  },
+  countRow: {
+    gap: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+  },
+  countBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(152,234,255,0.15)",
+    backgroundColor: "#05170e",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  countBtnActive: {
+    backgroundColor: "#085331",
+    borderColor: "#009951",
+  },
+  countBtnText: {
+    fontSize: 15,
+    color: "#3a7a5a",
+  },
+  countBtnTextActive: {
+    color: "#98FF9D",
+    fontWeight: "600",
+  },
+  freqSummary: {
+    fontSize: 13,
+    color: "#3a7a5a",
+    marginTop: 4,
+    marginBottom: 4,
   },
   saveBtn: {
     backgroundColor: "#009951",

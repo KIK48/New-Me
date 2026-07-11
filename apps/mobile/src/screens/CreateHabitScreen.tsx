@@ -9,26 +9,33 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { AppStack, Frequency } from "../navigation/types";
+import { AppStack, FrequencyType } from "../navigation/types";
 import { useAuth } from "../context/AuthContext";
 import { API_URL } from "../api/client";
 
 type Props = NativeStackScreenProps<AppStack, "CreateHabit">;
 
-const FREQUENCY_OPTIONS: { value: Frequency; label: string }[] = [
-  { value: "DAILY",          label: "Daily" },
-  { value: "WEEKDAYS",       label: "Weekdays" },
-  { value: "THREE_PER_WEEK", label: "3×/wk" },
-  { value: "TWO_PER_WEEK",   label: "2×/wk" },
+const PERIOD_OPTIONS: { value: FrequencyType; label: string }[] = [
+  { value: "DAILY",   label: "Daily" },
+  { value: "WEEKLY",  label: "Weekly" },
+  { value: "MONTHLY", label: "Monthly" },
 ];
+
+function countRange(type: FrequencyType): number[] {
+  if (type === "DAILY")   return [1, 2, 3, 4, 5];
+  if (type === "WEEKLY")  return [1, 2, 3, 4, 5, 6, 7];
+  return Array.from({ length: 28 }, (_, i) => i + 1);
+}
 
 export default function CreateHabitScreen({ navigation }: Props) {
   const { token } = useAuth();
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
-  const [frequency, setFrequency] = useState<Frequency>("DAILY");
+  const [freqType, setFreqType] = useState<FrequencyType>("DAILY");
+  const [freqCount, setFreqCount] = useState(1);
   const [loading, setLoading] = useState(false);
 
   async function handleSave() {
@@ -41,7 +48,7 @@ export default function CreateHabitScreen({ navigation }: Props) {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name: name.trim(), notes: notes.trim() || undefined, frequency }),
+        body: JSON.stringify({ name: name.trim(), notes: notes.trim() || undefined, frequencyType: freqType, frequencyCount: freqCount }),
       });
       if (!res.ok) {
         const body = await res.json();
@@ -100,18 +107,29 @@ export default function CreateHabitScreen({ navigation }: Props) {
 
         <Text style={styles.freqLabel}>FREQUENCY</Text>
         <View style={styles.freqRow}>
-          {FREQUENCY_OPTIONS.map((opt) => (
+          {PERIOD_OPTIONS.map((opt) => (
             <TouchableOpacity
               key={opt.value}
-              style={[styles.freqBtn, frequency === opt.value && styles.freqBtnActive]}
-              onPress={() => setFrequency(opt.value)}
+              style={[styles.freqBtn, freqType === opt.value && styles.freqBtnActive]}
+              onPress={() => { setFreqType(opt.value); setFreqCount(1); }}
             >
-              <Text style={[styles.freqBtnText, frequency === opt.value && styles.freqBtnTextActive]}>
+              <Text style={[styles.freqBtnText, freqType === opt.value && styles.freqBtnTextActive]}>
                 {opt.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.countRow}>
+          {countRange(freqType).map((n) => (
+            <TouchableOpacity
+              key={n}
+              style={[styles.countBtn, freqCount === n && styles.countBtnActive]}
+              onPress={() => setFreqCount(n)}
+            >
+              <Text style={[styles.countBtnText, freqCount === n && styles.countBtnTextActive]}>{n}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
         <TouchableOpacity
           style={[styles.saveBtn, !name.trim() && styles.saveBtnDisabled]}
@@ -243,6 +261,33 @@ const styles = StyleSheet.create({
     color: "#3a7a5a",
   },
   freqBtnTextActive: {
+    color: "#98FF9D",
+    fontWeight: "600",
+  },
+  countRow: {
+    gap: 8,
+    paddingVertical: 4,
+    paddingBottom: 8,
+  },
+  countBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(152,234,255,0.15)",
+    backgroundColor: "#001b0e",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  countBtnActive: {
+    backgroundColor: "#085331",
+    borderColor: "#009951",
+  },
+  countBtnText: {
+    fontSize: 14,
+    color: "#3a7a5a",
+  },
+  countBtnTextActive: {
     color: "#98FF9D",
     fontWeight: "600",
   },

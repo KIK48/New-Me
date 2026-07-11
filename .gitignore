@@ -13,6 +13,7 @@ build/
 .env.local
 .env.dev*
 !.env.dev.example
+!.env.example
 
 # prisma
 *.db

@@ -5,10 +5,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import React, { useState } from "react";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { AuthStack } from "../navigation/types";
+import { API_URL } from "../api/client";
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStack>;
@@ -34,7 +36,7 @@ export default function RegisterScreen({ navigation }: Props) {
 
     try {
       const res = await fetch(
-        "https://new-me-l46q.onrender.com/auth/register",
+        `${API_URL}/auth/register`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -93,11 +95,13 @@ export default function RegisterScreen({ navigation }: Props) {
       </View>
       {error !== "" && <Text style={styles.error}>{error}</Text>}
       <TouchableOpacity
-        style={styles.button}
+        style={[styles.button, loading && styles.buttonDisabled]}
         onPress={handleRegister}
         disabled={loading}
       >
-        <Text style={styles.buttonText}>{loading ? "Creating..." : "Sign Up"}</Text>
+        {loading
+          ? <ActivityIndicator color="#fff" />
+          : <Text style={styles.buttonText}>Sign Up</Text>}
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.loginBtn}
@@ -172,6 +176,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
+  },
+  buttonDisabled: {
+    backgroundColor: "#085331",
   },
   buttonText: {
     color: "#ffffff",

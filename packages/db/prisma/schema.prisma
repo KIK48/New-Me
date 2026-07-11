@@ -19,13 +19,15 @@ model User {
 }
 
 model Habit {
-  id        String   @id @default(cuid())
-  userId    String                         // owner of this habit
+  id        String    @id @default(cuid())
+  userId    String                          // owner of this habit
   name      String
   notes     String?
+  frequencyType  FrequencyType @default(DAILY)
+  frequencyCount Int           @default(1)
 
   startWeek DateTime
-  endWeek DateTime?
+  endWeek   DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -49,4 +51,11 @@ enum DayStatus {
   UNSET   // blank
   DONE    // check
   MISSED  // X
+}
+
+enum FrequencyType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
 }

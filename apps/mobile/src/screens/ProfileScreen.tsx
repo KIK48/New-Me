@@ -14,6 +14,7 @@ import {
   getMondayISO,
   buildWeekDates,
 } from "../utils/dates";
+import { calculateStreak } from "../utils/streak";
 
 type DayStatus = "UNSET" | "DONE" | "MISSED";
 
@@ -84,11 +85,29 @@ export default function ProfileScreen() {
     }
   });
 
+  // Best current streak across all habits — track name too
+  const bestStreakInfo = habits.reduce(
+    (best, h) => {
+      const habitDayMap: Record<string, "DONE" | "MISSED" | "UNSET"> = {};
+      allDays
+        .filter((d: any) => d.habitId === h.id)
+        .forEach((d: any) => {
+          habitDayMap[d.date?.split("T")[0]] = d.status;
+        });
+      const s = calculateStreak(habitDayMap, {
+        type: h.frequencyType ?? "DAILY",
+        count: h.frequencyCount ?? 1,
+      });
+      return s > best.streak ? { streak: s, name: h.name } : best;
+    },
+    { streak: 0, name: "" },
+  );
+
   const stats = [
-    { label: "This week", value: `${weekPct}%`, sub: "completion", real: true },
-    { label: "Habits",    value: `${habits.length}`, sub: "tracked", real: true },
-    { label: "Today",     value: `${todayDone}`,     sub: "done today", real: true },
-    { label: "Streak",    value: "21d",              sub: "best run",   real: false },
+    { label: "This week", value: `${weekPct}%`,                  sub: "completion" },
+    { label: "Habits",    value: `${habits.length}`,             sub: "tracked" },
+    { label: "Today",     value: `${todayDone}`,                 sub: "done today" },
+    { label: "Streak",    value: `${bestStreakInfo.streak}d`,    sub: bestStreakInfo.name || "best active" },
   ];
 
   return (
@@ -123,6 +142,7 @@ export default function ProfileScreen() {
               <Text style={styles.statSub}>{s.sub}</Text>
             </View>
           ))}
+
         </View>
 
         {/* This week's habit breakdown */}

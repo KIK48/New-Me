@@ -5,11 +5,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { AuthStack } from "../navigation/types";
+import { API_URL } from "../api/client";
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStack>;
@@ -19,17 +21,32 @@ export default function LoginScreen({ navigation }: Props) {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleLogin = async () => {
-    const res = await fetch("https://new-me-l46q.onrender.com/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const data = await res.json();
-    if (data.token) {
-      await login(data.token);
+    if (!email || !password) {
+      setError("Email and password are required.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (data.token) {
+        await login(data.token);
+      } else {
+        setError(data.error ?? "Invalid email or password.");
+      }
+    } catch {
+      setError("Could not reach the server. Check your connection.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -61,8 +78,15 @@ export default function LoginScreen({ navigation }: Props) {
           secureTextEntry
         />
       </View>
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Log In</Text>
+      {error !== "" && <Text style={styles.error}>{error}</Text>}
+      <TouchableOpacity
+        style={[styles.button, loading && styles.buttonDisabled]}
+        onPress={handleLogin}
+        disabled={loading}
+      >
+        {loading
+          ? <ActivityIndicator color="#fff" />
+          : <Text style={styles.buttonText}>Log In</Text>}
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.registerBtn}
@@ -126,11 +150,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#001b0e",
     color: "#98EAFF",
   },
+  error: {
+    color: "#ff5555",
+    fontSize: 13,
+    textAlign: "center",
+    marginBottom: 12,
+  },
   button: {
     backgroundColor: "#009951",
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
+  },
+  buttonDisabled: {
+    backgroundColor: "#085331",
   },
   buttonText: {
     color: "#ffffff",

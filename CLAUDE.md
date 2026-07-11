@@ -18,6 +18,34 @@ Additional context lives in `.claude/memory/`. Read the relevant file before wor
 | `.claude/memory/project_auth.md` | JWT auth implementation — file locations, middleware, env vars, deployment notes |
 | `.claude/memory/user_prefs.md` | Code style and comment preferences |
 
+## Release Process
+
+Follow this every time the user says "submit", "release", "push to GitHub", or similar.
+
+### Versioning
+- App version lives in `apps/mobile/app.json` → `"version"`
+- GitHub release tags match: `v1.0.0`, `v1.1.0`, `v1.2.0`, etc.
+- **Minor bump (1.x.0)** — new features, new screens, new native dependencies
+- **Patch bump (1.0.x)** — bug fixes, copy changes, small UI tweaks
+
+### Steps (in order)
+
+1. **Update `docs/CHANGELOG.md`** — move items from `[Unreleased]` into a new `[X.Y.Z] — YYYY-MM-DD` section. Keep `[Unreleased]` at the top, empty.
+2. **Bump `apps/mobile/app.json` version** — match the changelog version.
+3. **Commit** both files onto the feature branch (can be part of the same PR commit or a separate one).
+4. **Open a PR** if not already open — include issue reference and test checklist.
+5. **Create GitHub release** with `gh release create vX.Y.Z` — mark as `--prerelease` until the PR is merged and tested on device; remove pre-release after testing.
+6. **Remind the user** whether this release needs a full **EAS Build** (added a native module → yes) or just an **EAS Update** (JS-only changes → fast OTA).
+
+### EAS cheat sheet (run from `apps/mobile/`)
+```bash
+# Full build — required when a native module was added
+eas build --platform ios --profile preview
+
+# OTA update — JS-only changes, lands in seconds
+eas update --branch preview --message "what changed"
+```
+
 ## Commands
 
 Run these from the relevant workspace directory (e.g. `cd apps/web`):

@@ -5,6 +5,7 @@ import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
 import CreateHabitScreen from "../screens/CreateHabitScreen";
 import EditHabitScreen from "../screens/EditHabitScreen";
+import HabitDetailScreen from "../screens/HabitDetailScreen";
 import TabNavigator from "./TabNavigator";
 import { AppStack, AuthStack } from "./types";
 
@@ -35,7 +36,12 @@ export default function RootNavigator() {
           <AppNavigator.Screen
             name="EditHabit"
             component={EditHabitScreen}
-            options={{ title: "Edit Habit" }}
+            options={{ headerShown: false }}
+          />
+          <AppNavigator.Screen
+            name="HabitDetail"
+            component={HabitDetailScreen}
+            options={{ headerShown: false }}
           />
         </AppNavigator.Navigator>
       ) : (

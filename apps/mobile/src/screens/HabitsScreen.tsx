@@ -178,7 +178,16 @@ export default function HabitsScreen() {
                 {status === "DONE" && <CheckIcon size={40} />}
                 {status === "MISSED" && <XIcon size={40} />}
               </TouchableOpacity>
-              <View style={styles.habitInfo}>
+              <TouchableOpacity
+                style={styles.habitInfo}
+                onPress={() =>
+                  navigation.navigate("HabitDetail", {
+                    id: item.id,
+                    name: item.name,
+                    notes: item.notes,
+                  })
+                }
+              >
                 <Text
                   style={[
                     styles.habitName,
@@ -192,7 +201,7 @@ export default function HabitsScreen() {
                   {item.name}
                 </Text>
                 <Text style={styles.habitSub}>{subtext}</Text>
-              </View>
+              </TouchableOpacity>
               {!deleteMode ? (
                 <TouchableOpacity
                   onPress={() =>

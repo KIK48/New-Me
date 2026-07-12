@@ -91,6 +91,7 @@ export default function CreateHabitScreen({ navigation }: Props) {
           onChangeText={setName}
           placeholder="e.g. Read for 20 minutes"
           placeholderTextColor="#3a7a5a"
+          keyboardAppearance="dark"
           autoFocus
           returnKeyType="next"
           maxLength={80}
@@ -102,6 +103,7 @@ export default function CreateHabitScreen({ navigation }: Props) {
           onChangeText={setNotes}
           placeholder="Notes (optional)"
           placeholderTextColor="#3a7a5a"
+          keyboardAppearance="dark"
           returnKeyType="done"
           onSubmitEditing={handleSave}
           maxLength={200}

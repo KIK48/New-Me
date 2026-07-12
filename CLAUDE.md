@@ -4,10 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-New-Me is a monorepo habit tracking app with a weekly-view UI. Three workspaces:
-- `apps/web` — React 19 + Vite frontend (main feature area)
-- `apps/api` — Express 5 REST API (port 4000)
-- `packages/db` — Prisma + SQLite (better-sqlite3 adapter)
+New-Me is a monorepo habit tracking app. Four workspaces:
+- `apps/mobile` — React Native / Expo mobile app (primary active development area)
+- `apps/web` — React 19 + Vite frontend
+- `apps/api` — Express 5 REST API (port 4000), deployed on Render
+- `packages/db` — Prisma + PostgreSQL (NeonDB in production, SQLite for local dev)
 
 ## Context Files
 
@@ -36,6 +37,7 @@ Follow this every time the user says "submit", "release", "push to GitHub", or s
 4. **Open a PR** if not already open — include issue reference and test checklist.
 5. **Create GitHub release** with `gh release create vX.Y.Z` — mark as `--prerelease` until the PR is merged and tested on device; remove pre-release after testing.
 6. **Remind the user** whether this release needs a full **EAS Build** (added a native module → yes) or just an **EAS Update** (JS-only changes → fast OTA).
+7. **If this release is a full EAS Build** (native), also bump `LATEST_NATIVE_VERSION` on the Render API to match the new `app.json` version — the mobile app compares this against its own `runtimeVersion` on launch to show the "update via TestFlight" prompt. Skip this step for OTA-only releases.
 
 ### EAS cheat sheet (run from `apps/mobile/`)
 ```bash
@@ -45,6 +47,11 @@ eas build --platform ios --profile preview
 # OTA update — JS-only changes, lands in seconds
 eas update --branch preview --message "what changed"
 ```
+
+### Update mechanism (implemented)
+- `src/hooks/useAppUpdates.ts`, wired into `App.tsx`, runs on every launch:
+  - OTA (JS-only): checks `expo-updates` for a pending update and reloads immediately instead of waiting for the next cold start — fully silent, no TestFlight involved.
+  - Native: fetches `GET /app-version` from the API and compares `latestRuntimeVersion` against `Updates.runtimeVersion`; if behind, shows an `Alert.alert` prompting the user to open TestFlight (Apple doesn't allow silent native updates).
 
 ## Commands
 
@@ -205,6 +212,44 @@ Topics to explain when relevant:
 - **Platform-specific concerns** — iOS vs. Android differences, native modules
 
 Explain how mobile architecture differs from web architecture and where the same patterns apply.
+
+### Mobile App Conventions (`apps/mobile/`)
+
+**Navigation structure:**
+- `RootNavigator` → AuthStack (Login, Register) or AppStack
+- AppStack: Tabs (Home, Weekly, Profile) + stack screens (CreateHabit, EditHabit, HabitDetail)
+- CreateHabit uses `transparentModal` + `slide_from_bottom`. All stack screens use `headerShown: false` with custom back buttons.
+
+**Data fetching pattern — always use this:**
+```tsx
+import { useIsFocused } from "@react-navigation/native";
+const isFocused = useIsFocused();
+useEffect(() => {
+  if (!token || !isFocused) return;
+  // fetch data...
+}, [token, isFocused]); // add other deps (e.g. mondayISO) as needed
+```
+Do NOT use `useFocusEffect(useCallback(fn, [token]))` — it only fires on navigation events, not when the token loads from SecureStore after app restart, leaving the default tab with blank data.
+
+**Design system:**
+| Token | Value |
+|-------|-------|
+| Background | `#000603` |
+| Card surface | `#085331` |
+| Primary green (text/icons) | `#98FF9D` |
+| Active border/button | `#009951` |
+| Accent blue | `#98eaff` |
+| Muted green | `#3a7a5a` |
+| Danger | `#860000` |
+
+Card style: `borderRadius: 16`, shadow `{ width: -4, height: 4 }`, `shadowOpacity: 0.25–0.4`.
+
+**Key libraries:**
+- `react-native-gesture-handler` — Swipeable for swipe-to-delete; `GestureHandlerRootView` wraps `App.tsx`
+- `react-native-svg` — SVG icons via `src/components/HabitIcons.tsx`
+- `expo-secure-store` — JWT storage; token accessed via `useAuth()` from `src/context/AuthContext.tsx`
+
+**API:** Base URL from `EXPO_PUBLIC_API_URL` env var, exported from `src/api/client.ts`. All habit routes need `Authorization: Bearer <token>`.
 
 ## Project Safety
 

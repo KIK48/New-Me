@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { useIsFocused } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
 import { API_URL } from "../api/client";
 import {
@@ -39,24 +39,24 @@ export default function ProfileScreen() {
   );
   const avatarLetter = email ? email[0].toUpperCase() : "?";
 
-  useFocusEffect(
-    useCallback(() => {
-      if (!token) return;
-      Promise.all([
-        fetch(`${API_URL}/habits`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }).then((r) => r.json()),
-        fetch(`${API_URL}/habit-days`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }).then((r) => r.json()),
-      ])
-        .then(([habitsData, daysData]) => {
-          setHabits(Array.isArray(habitsData) ? habitsData : []);
-          setAllDays(Array.isArray(daysData) ? daysData : []);
-        })
-        .catch(console.error);
-    }, [token]),
-  );
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (!token || !isFocused) return;
+    Promise.all([
+      fetch(`${API_URL}/habits`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((r) => r.json()),
+      fetch(`${API_URL}/habit-days`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((r) => r.json()),
+    ])
+      .then(([habitsData, daysData]) => {
+        setHabits(Array.isArray(habitsData) ? habitsData : []);
+        setAllDays(Array.isArray(daysData) ? daysData : []);
+      })
+      .catch(console.error);
+  }, [token, isFocused]);
 
   // ── Real stats ────────────────────────────────────────────
   const today = todayISO();

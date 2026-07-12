@@ -7,8 +7,8 @@ import {
   Alert,
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
-import React, { useState, useCallback } from "react";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import React, { useState, useEffect } from "react";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../context/AuthContext";
 import { AppStack } from "../navigation/types";
@@ -31,37 +31,39 @@ export default function HabitsScreen() {
   // +/- mode: tap a habit card to mark done (+) or undo (-)
   const [mode, setMode] = useState<Mode>(null);
 
-  // Refetch every time this screen comes into focus (e.g. returning from CreateHabit)
-  useFocusEffect(
-    useCallback(() => {
-      if (!token) return;
-      const today = todayISO();
+  const isFocused = useIsFocused();
 
-      Promise.all([
-        fetch(`${API_URL}/habits`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }).then((r) => r.json()),
-        fetch(`${API_URL}/habit-days`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }).then((r) => r.json()),
-      ])
-        .then(([habitsData, daysData]) => {
-          setHabits(Array.isArray(habitsData) ? habitsData : []);
+  // Refetch when token loads OR screen gains focus.
+  // useIsFocused + useEffect handles both: navigation events AND app restarts where
+  // the screen is already focused when the token loads from SecureStore.
+  useEffect(() => {
+    if (!token || !isFocused) return;
+    const today = todayISO();
 
-          // Build a map of habitId -> status for today only
-          const map: Record<string, DayStatus> = {};
-          if (Array.isArray(daysData)) {
-            daysData
-              .filter((d: any) => d.date?.startsWith(today))
-              .forEach((d: any) => {
-                map[d.habitId] = d.status as DayStatus;
-              });
-          }
-          setTodayStatuses(map);
-        })
-        .catch((err) => console.log("fetch error:", err));
-    }, [token]),
-  );
+    Promise.all([
+      fetch(`${API_URL}/habits`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((r) => r.json()),
+      fetch(`${API_URL}/habit-days`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((r) => r.json()),
+    ])
+      .then(([habitsData, daysData]) => {
+        setHabits(Array.isArray(habitsData) ? habitsData : []);
+
+        // Build a map of habitId -> status for today only
+        const map: Record<string, DayStatus> = {};
+        if (Array.isArray(daysData)) {
+          daysData
+            .filter((d: any) => d.date?.startsWith(today))
+            .forEach((d: any) => {
+              map[d.habitId] = d.status as DayStatus;
+            });
+        }
+        setTodayStatuses(map);
+      })
+      .catch((err) => console.log("fetch error:", err));
+  }, [token, isFocused]);
 
   async function updateStatus(habitId: string, next: DayStatus) {
     const current = todayStatuses[habitId] ?? "UNSET";

@@ -18,6 +18,28 @@ When cutting a release, move `[Unreleased]` items into a new dated version secti
 
 ## [Unreleased]
 
+### Mobile
+
+#### Added
+- **Calendar screen** (formerly "Weekly") — 4 scoped views (Day / Week / Month / Year), each showing only habits whose `frequencyType` matches that scope, so a "gym 5x/week" habit lives in the Week view and a "vacation 2x/year" habit lives in the Year view, not every view
+- **Multi-completion habit logging** — DAILY habits with `frequencyCount > 1` (e.g. "eat 2x/day") can log multiple timestamped completions per day via the new `HabitLog` data; Daily view shows a progress bar, each logged time, and a way to undo a specific entry
+- **OTA auto-update** — checks for a JS-only update on every launch and applies it immediately instead of waiting for the next cold start
+- **Native update notifier** — modal (matching the delete-habit confirmation style) prompts the user to update via TestFlight when a new native build exists, since Apple never allows silent native updates
+- **Dark keyboard** — `keyboardAppearance="dark"` on every text input (Login, Register, Create/Edit Habit)
+
+#### Changed
+- "Weekly" tab renamed to "Calendar"
+- Week view now shows a `count/target` badge per habit row (e.g. "3/5") instead of just cell icons
+
+#### Fixed
+- `useFocusEffect` → `useIsFocused` on Week and Profile screens — data no longer stays blank when the token loads from SecureStore after an app restart
+
+### Backend
+
+#### Added
+- `HabitLog` model + `GET/POST /habit-logs`, `DELETE /habit-logs/:id` — supports multi-completion habits
+- `GET /app-version` — lets the mobile app tell OTA-updatable JS changes apart from native rebuilds
+
 ---
 
 ## [1.1.0] — 2026-07-04

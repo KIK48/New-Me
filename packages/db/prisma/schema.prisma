@@ -34,6 +34,7 @@ model Habit {
 
   user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   days HabitDay[]
+  logs HabitLog[]
 }
 
 model HabitDay {
@@ -45,6 +46,18 @@ model HabitDay {
 
   @@id([habitId, date])     // one record per habit per day
   @@index([date])
+}
+
+// One row per completion — only used by habits that need more than one check-in
+// per day (e.g. "eat 2x/day"). Habits with frequencyCount 1 keep using HabitDay.
+model HabitLog {
+  id       String   @id @default(cuid())
+  habitId  String
+  loggedAt DateTime // hour:minute precision, seconds don't matter
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@index([habitId, loggedAt])
 }
 
 enum DayStatus {

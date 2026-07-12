@@ -4,6 +4,7 @@ import cors from "cors";
 
 import habitsRouter from "./routes/habits.routes";
 import habitDay from "./routes/habitDay.routes";
+import habitLog from "./routes/habitLog.routes";
 import authRouter from "./routes/auth.routes";
 import { requireAuth } from "./middleware/requireAuth";
 
@@ -15,12 +16,20 @@ app.use(express.json());
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
+// Lets the mobile app tell "OTA JS update available" (handled silently by expo-updates)
+// apart from "native rebuild needed" (Apple only allows that via TestFlight, never OTA) —
+// LATEST_NATIVE_VERSION is bumped by hand only when a full EAS Build ships.
+app.get("/app-version", (_req, res) =>
+  res.json({ latestRuntimeVersion: process.env.LATEST_NATIVE_VERSION ?? "1.1.0" }),
+);
+
 // Public: no token needed to log in / register
 app.use("/auth", authRouter);
 
 // Protected: requireAuth middleware validates the JWT before every request
 app.use("/habits", requireAuth, habitsRouter);
 app.use("/habit-days", requireAuth, habitDay);
+app.use("/habit-logs", requireAuth, habitLog);
 
 const port = process.env.PORT ?? 4000;
 app.listen(port, () => console.log(`Server running on http://localhost:${port}`));

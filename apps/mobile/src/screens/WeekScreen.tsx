@@ -1,91 +1,74 @@
-import React, { useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-} from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import React, { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { useIsFocused } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
 import { API_URL } from "../api/client";
-import {
-  getMondayISO,
-  addDays,
-  buildWeekDates,
-  formatDate,
-  todayISO,
-} from "../utils/dates";
-import { CheckIcon, XIcon } from "../components/HabitIcons";
+import { addDays, addMonths, buildWeekDates, getMondayISO, todayISO } from "../utils/dates";
+import DailyView from "./week/DailyView";
+import WeeklyView from "./week/WeeklyView";
+import MonthlyView from "./week/MonthlyView";
+import YearlyView from "./week/YearlyView";
+import { DayStatus, Habit, HabitLogEntry, StatusMap, ViewMode } from "./week/types";
 
-type DayStatus = "UNSET" | "DONE" | "MISSED";
-
-// statuses[habitId][dayISO] = DayStatus
-type StatusMap = Record<string, Record<string, DayStatus>>;
-
-const DAY_LABELS = ["M", "Tu", "W", "Th", "F", "Sa", "Su"];
-
-function nextStatus(current: DayStatus): DayStatus {
-  if (current === "UNSET") return "DONE";
-  if (current === "DONE") return "MISSED";
-  return "UNSET";
-}
+const VIEW_OPTIONS: { key: ViewMode; label: string }[] = [
+  { key: "daily", label: "Day" },
+  { key: "weekly", label: "Week" },
+  { key: "monthly", label: "Month" },
+  { key: "yearly", label: "Year" },
+];
 
 export default function WeekScreen() {
   const { token } = useAuth();
-  const [mondayISO, setMondayISO] = useState(() => getMondayISO());
-  const weekDates = buildWeekDates(mondayISO);
-  const sundayISO = weekDates[6];
+  const isFocused = useIsFocused();
 
-  const [habits, setHabits] = useState<any[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>("weekly");
+  const [habits, setHabits] = useState<Habit[]>([]);
   const [statuses, setStatuses] = useState<StatusMap>({});
+  const [logs, setLogs] = useState<HabitLogEntry[]>([]);
 
-  const today = todayISO();
-  const todayColIndex = weekDates.indexOf(today);
+  // Per-view navigation anchors — kept independent so switching views doesn't lose your place
+  const [selectedDateISO, setSelectedDateISO] = useState(() => todayISO());
+  const [mondayISO, setMondayISO] = useState(() => getMondayISO());
+  const now = new Date();
+  const [monthAnchor, setMonthAnchor] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
+  const [yearAnchor, setYearAnchor] = useState(now.getFullYear());
 
-  useFocusEffect(
-    useCallback(() => {
-      if (!token) return;
-      loadData();
-    }, [token, mondayISO]),
-  );
+  // Fetches the full habit-day history once per focus/token change — Monthly and
+  // Yearly views need long-range data anyway, so all 4 views share one dataset.
+  useEffect(() => {
+    if (!token || !isFocused) return;
 
-  async function loadData() {
-    try {
-      const [habitsData, daysData] = await Promise.all([
-        fetch(`${API_URL}/habits`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }).then((r) => r.json()),
-        fetch(`${API_URL}/habit-days`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }).then((r) => r.json()),
-      ]);
+    Promise.all([
+      fetch(`${API_URL}/habits`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((r) => r.json()),
+      fetch(`${API_URL}/habit-days`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((r) => r.json()),
+      fetch(`${API_URL}/habit-logs`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((r) => r.json()),
+    ])
+      .then(([habitsData, daysData, logsData]) => {
+        setHabits(Array.isArray(habitsData) ? habitsData : []);
 
-      setHabits(Array.isArray(habitsData) ? habitsData : []);
-
-      // Build statuses[habitId][dayISO] for this week only
-      const map: StatusMap = {};
-      if (Array.isArray(daysData)) {
-        daysData.forEach((d: any) => {
-          const dayStr = d.date?.split("T")[0];
-          if (weekDates.includes(dayStr)) {
+        const map: StatusMap = {};
+        if (Array.isArray(daysData)) {
+          daysData.forEach((d: any) => {
+            const dayStr = d.date?.split("T")[0];
             if (!map[d.habitId]) map[d.habitId] = {};
             map[d.habitId][dayStr] = d.status as DayStatus;
-          }
-        });
-      }
-      setStatuses(map);
-    } catch (err) {
-      console.log("fetch error:", err);
-    }
-  }
+          });
+        }
+        setStatuses(map);
+        setLogs(Array.isArray(logsData) ? logsData : []);
+      })
+      .catch((err) => console.log("fetch error:", err));
+  }, [token, isFocused]);
 
-  async function handleCheckIn(habitId: string, dayISO: string) {
+  async function handleCheckIn(habitId: string, dayISO: string, next: DayStatus) {
     const current = statuses[habitId]?.[dayISO] ?? "UNSET";
-    const next = nextStatus(current);
 
-    // Optimistic update
     setStatuses((prev) => ({
       ...prev,
       [habitId]: { ...(prev[habitId] ?? {}), [dayISO]: next },
@@ -116,92 +99,132 @@ export default function WeekScreen() {
     }
   }
 
+  function handleWeeklyCellPress(habitId: string, dayISO: string) {
+    const current = statuses[habitId]?.[dayISO] ?? "UNSET";
+    const next: DayStatus = current === "UNSET" ? "DONE" : current === "DONE" ? "MISSED" : "UNSET";
+    handleCheckIn(habitId, dayISO, next);
+  }
+
+  // For DAILY habits with frequencyCount > 1 (e.g. "eat 2x/day") — each tap adds
+  // one timestamped completion instead of toggling a single day-level status.
+  async function handleAddLog(habitId: string) {
+    const tempId = `temp-${Date.now()}`;
+    const optimisticLog: HabitLogEntry = { id: tempId, habitId, loggedAt: new Date().toISOString() };
+    setLogs((prev) => [optimisticLog, ...prev]);
+
+    try {
+      const res = await fetch(`${API_URL}/habit-logs`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ habitId }),
+      });
+      if (!res.ok) throw new Error("Failed to log");
+      const saved = await res.json();
+      setLogs((prev) => prev.map((l) => (l.id === tempId ? saved : l)));
+    } catch {
+      setLogs((prev) => prev.filter((l) => l.id !== tempId));
+      Alert.alert("Error", "Failed to save — try again");
+    }
+  }
+
+  async function handleDeleteLog(logId: string) {
+    const removed = logs.find((l) => l.id === logId);
+    setLogs((prev) => prev.filter((l) => l.id !== logId));
+
+    try {
+      const res = await fetch(`${API_URL}/habit-logs/${logId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to delete");
+    } catch {
+      if (removed) setLogs((prev) => [removed, ...prev]);
+      Alert.alert("Error", "Failed to undo — try again");
+    }
+  }
+
+  // Each view only shows habits whose rule actually lives in that scope —
+  // e.g. "gym 5x/week" is a WEEKLY habit and only appears in the Weekly view.
+  const dailyHabits = habits.filter((h) => (h.frequencyType ?? "DAILY") === "DAILY");
+  const weeklyHabits = habits.filter((h) => h.frequencyType === "WEEKLY");
+  const monthlyHabits = habits.filter((h) => h.frequencyType === "MONTHLY");
+  const yearlyHabits = habits.filter((h) => h.frequencyType === "YEARLY");
+
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.eyebrow}>WEEKLY</Text>
-          <Text style={styles.title}>Weekly</Text>
-        </View>
+        <Text style={styles.eyebrow}>CALENDAR</Text>
+        <Text style={styles.title}>Calendar</Text>
       </View>
 
-      {/* Date nav card */}
-      <View style={styles.dateCard}>
-        <View style={styles.dateRow}>
-          <View style={styles.datePill}>
-            <Text style={styles.datePillText}>{formatDate(mondayISO)}</Text>
-          </View>
+      <View style={styles.viewSwitcher}>
+        {VIEW_OPTIONS.map((opt) => (
           <TouchableOpacity
-            style={styles.arrowBtn}
-            onPress={() => setMondayISO(addDays(mondayISO, -7))}
+            key={opt.key}
+            style={[styles.viewPill, viewMode === opt.key && styles.viewPillActive]}
+            onPress={() => setViewMode(opt.key)}
           >
-            <Text style={styles.arrowText}>‹</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.arrowBtn}
-            onPress={() => setMondayISO(addDays(mondayISO, 7))}
-          >
-            <Text style={styles.arrowText}>›</Text>
-          </TouchableOpacity>
-          <View style={styles.datePill}>
-            <Text style={styles.datePillText}>{formatDate(sundayISO)}</Text>
-          </View>
-        </View>
-
-        {/* Day headers — aligned to cells below */}
-        <View style={styles.dayHeaderRow}>
-          <View style={styles.habitNameCol} />
-          {DAY_LABELS.map((label, i) => (
-            <View key={i} style={styles.cellSlot}>
-              <Text
-                style={[
-                  styles.dayLabel,
-                  i === todayColIndex && styles.dayLabelToday,
-                ]}
-              >
-                {label}
-              </Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Habit rows */}
-      <FlatList
-        data={habits}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <View style={styles.habitCard}>
-            <Text style={styles.habitName} numberOfLines={1}>
-              {item.name}
+            <Text style={[styles.viewPillText, viewMode === opt.key && styles.viewPillTextActive]}>
+              {opt.label}
             </Text>
-            <View style={styles.cellRow}>
-              {weekDates.map((dayISO, i) => {
-                const status = statuses[item.id]?.[dayISO] ?? "UNSET";
-                const isToday = i === todayColIndex;
+          </TouchableOpacity>
+        ))}
+      </View>
 
-                return (
-                  <TouchableOpacity
-                    key={dayISO}
-                    style={[styles.cell, isToday && styles.cellToday]}
-                    onPress={() => handleCheckIn(item.id, dayISO)}
-                  >
-                    {status === "DONE" && <CheckIcon size={30} />}
-                    {status === "MISSED" && <XIcon size={30} />}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        )}
-      />
+      {viewMode === "daily" && (
+        <DailyView
+          dateISO={selectedDateISO}
+          habits={dailyHabits}
+          statuses={statuses}
+          logs={logs}
+          onPrevDay={() => setSelectedDateISO((d) => addDays(d, -1))}
+          onNextDay={() => setSelectedDateISO((d) => addDays(d, 1))}
+          onCheckIn={(habitId, next) => handleCheckIn(habitId, selectedDateISO, next)}
+          onAddLog={handleAddLog}
+          onDeleteLog={handleDeleteLog}
+        />
+      )}
+
+      {viewMode === "weekly" && (
+        <WeeklyView
+          mondayISO={mondayISO}
+          weekDates={buildWeekDates(mondayISO)}
+          habits={weeklyHabits}
+          statuses={statuses}
+          onPrevWeek={() => setMondayISO((d) => addDays(d, -7))}
+          onNextWeek={() => setMondayISO((d) => addDays(d, 7))}
+          onCellPress={handleWeeklyCellPress}
+        />
+      )}
+
+      {viewMode === "monthly" && (
+        <MonthlyView
+          year={monthAnchor.year}
+          month={monthAnchor.month}
+          habits={monthlyHabits}
+          statuses={statuses}
+          onPrevMonth={() => setMonthAnchor((a) => addMonths(a.year, a.month, -1))}
+          onNextMonth={() => setMonthAnchor((a) => addMonths(a.year, a.month, 1))}
+          onCheckIn={handleCheckIn}
+        />
+      )}
+
+      {viewMode === "yearly" && (
+        <YearlyView
+          year={yearAnchor}
+          habits={yearlyHabits}
+          statuses={statuses}
+          onPrevYear={() => setYearAnchor((y) => y - 1)}
+          onNextYear={() => setYearAnchor((y) => y + 1)}
+          onCheckIn={handleCheckIn}
+        />
+      )}
     </View>
   );
 }
-
-const CELL_SIZE = 34;
 
 const styles = StyleSheet.create({
   container: {
@@ -225,120 +248,30 @@ const styles = StyleSheet.create({
     fontWeight: "400",
     color: "#98FF9D",
   },
-  dateCard: {
-    backgroundColor: "#085331",
-    borderRadius: 16,
+  viewSwitcher: {
+    flexDirection: "row",
     marginHorizontal: 16,
-    marginBottom: 12,
-    paddingTop: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: -4, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  dateRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    gap: 8,
-    marginBottom: 8,
-  },
-  datePill: {
-    flex: 1,
-    backgroundColor: "#000",
-    borderRadius: 10,
-    paddingVertical: 8,
-    alignItems: "center",
-  },
-  datePillText: {
-    fontSize: 11,
-    color: "#98eaff",
-  },
-  arrowBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  arrowText: {
-    fontSize: 20,
-    color: "#98eaff",
-    lineHeight: 24,
-  },
-  dayHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingBottom: 10,
-  },
-  habitNameCol: {
-    width: 80,
-    flexShrink: 0,
-  },
-  cellSlot: {
-    width: CELL_SIZE,
-    alignItems: "center",
-    marginHorizontal: 2,
-  },
-  dayLabel: {
-    fontSize: 11,
-    color: "#98eaff",
-    fontWeight: "400",
-  },
-  dayLabelToday: {
-    color: "#98FF9D",
-    fontWeight: "600",
-  },
-  list: {
-    paddingHorizontal: 16,
-    paddingBottom: 110,
-    gap: 8,
-  },
-  habitCard: {
+    marginBottom: 14,
     backgroundColor: "#085331",
     borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: -4, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
+    padding: 4,
+    gap: 4,
   },
-  habitName: {
-    width: 80,
-    fontSize: 13,
-    color: "#98eaff",
-    flexShrink: 0,
-    paddingRight: 4,
-  },
-  cellRow: {
-    flexDirection: "row",
+  viewPill: {
     flex: 1,
-    justifyContent: "space-between",
-  },
-  cell: {
-    width: CELL_SIZE,
-    height: CELL_SIZE,
-    borderRadius: 8,
-    backgroundColor: "#000",
+    paddingVertical: 8,
+    borderRadius: 10,
     alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(152,234,255,0.08)",
   },
-  cellToday: {
-    borderWidth: 1.5,
-    borderColor: "rgba(152,234,255,0.45)",
+  viewPillActive: {
+    backgroundColor: "#009951",
   },
-  cellLabel: {
-    fontSize: 14,
-    fontWeight: "bold",
+  viewPillText: {
+    fontSize: 13,
+    color: "#3a7a5a",
+  },
+  viewPillTextActive: {
+    color: "#98FF9D",
+    fontWeight: "600",
   },
 });

@@ -51,7 +51,7 @@ export default function TabNavigator() {
         name="Week"
         component={WeekScreen}
         options={{
-          tabBarLabel: "Weekly",
+          tabBarLabel: "Calendar",
           tabBarIcon: ({ color, size }) => (
             <Feather name="calendar" size={size} color={color} />
           ),

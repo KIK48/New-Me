@@ -6,8 +6,9 @@ import {
   StyleSheet,
   Alert,
 } from "react-native";
-import React, { useState, useCallback } from "react";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { Swipeable } from "react-native-gesture-handler";
+import React, { useState, useEffect } from "react";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../context/AuthContext";
 import { AppStack } from "../navigation/types";
@@ -18,63 +19,57 @@ import { CheckIcon, XIcon } from "../components/HabitIcons";
 // HabitsScreen lives inside the tab navigator, but CreateHabit/EditHabit
 // are on the parent AppStack — useNavigation gives access to the full stack
 type Nav = NativeStackNavigationProp<AppStack>;
-
 type DayStatus = "UNSET" | "DONE" | "MISSED";
+type Mode = "+" | "-" | null;
 
-function nextStatus(current: DayStatus): DayStatus {
-  if (current === "UNSET") return "DONE";
-  if (current === "DONE") return "MISSED";
-  return "UNSET";
-}
 
 export default function HabitsScreen() {
   const { token } = useAuth();
   const navigation = useNavigation<Nav>();
   const [habits, setHabits] = useState<any[]>([]);
-  const [deleteMode, setDeleteMode] = useState(false);
-  // Maps habitId -> today's status
-  const [todayStatuses, setTodayStatuses] = useState<Record<string, DayStatus>>(
-    {},
-  );
+  const [todayStatuses, setTodayStatuses] = useState<Record<string, DayStatus>>({});
+  // +/- mode: tap a habit card to mark done (+) or undo (-)
+  const [mode, setMode] = useState<Mode>(null);
 
-  // Refetch every time this screen comes into focus (e.g. returning from CreateHabit)
-  useFocusEffect(
-    useCallback(() => {
-      if (!token) return;
-      const today = todayISO();
+  const isFocused = useIsFocused();
 
-      Promise.all([
-        fetch(`${API_URL}/habits`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }).then((r) => r.json()),
-        fetch(`${API_URL}/habit-days`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }).then((r) => r.json()),
-      ])
-        .then(([habitsData, daysData]) => {
-          setHabits(Array.isArray(habitsData) ? habitsData : []);
-
-          // Build a map of habitId -> status for today only
-          const map: Record<string, DayStatus> = {};
-          if (Array.isArray(daysData)) {
-            daysData
-              .filter((d: any) => d.date?.startsWith(today))
-              .forEach((d: any) => {
-                map[d.habitId] = d.status as DayStatus;
-              });
-          }
-          setTodayStatuses(map);
-        })
-        .catch((err) => console.log("fetch error:", err));
-    }, [token]),
-  );
-
-  async function handleCheckIn(habitId: string) {
-    const current = todayStatuses[habitId] ?? "UNSET";
-    const next = nextStatus(current);
+  // Refetch when token loads OR screen gains focus.
+  // useIsFocused + useEffect handles both: navigation events AND app restarts where
+  // the screen is already focused when the token loads from SecureStore.
+  useEffect(() => {
+    if (!token || !isFocused) return;
     const today = todayISO();
 
-    // Optimistic update — update UI immediately, don't wait for server
+    Promise.all([
+      fetch(`${API_URL}/habits`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((r) => r.json()),
+      fetch(`${API_URL}/habit-days`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((r) => r.json()),
+    ])
+      .then(([habitsData, daysData]) => {
+        setHabits(Array.isArray(habitsData) ? habitsData : []);
+
+        // Build a map of habitId -> status for today only
+        const map: Record<string, DayStatus> = {};
+        if (Array.isArray(daysData)) {
+          daysData
+            .filter((d: any) => d.date?.startsWith(today))
+            .forEach((d: any) => {
+              map[d.habitId] = d.status as DayStatus;
+            });
+        }
+        setTodayStatuses(map);
+      })
+      .catch((err) => console.log("fetch error:", err));
+  }, [token, isFocused]);
+
+  async function updateStatus(habitId: string, next: DayStatus) {
+    const current = todayStatuses[habitId] ?? "UNSET";
+    const today = todayISO();
+
+    // Optimistic update
     setTodayStatuses((prev) => ({ ...prev, [habitId]: next }));
 
     try {
@@ -87,7 +82,6 @@ export default function HabitsScreen() {
         body: JSON.stringify({ habitId, date: today, status: next }),
       });
       if (!res.ok) {
-        // Roll back on failure
         setTodayStatuses((prev) => ({ ...prev, [habitId]: current }));
         Alert.alert("Error", "Failed to save check-in");
       }
@@ -95,6 +89,53 @@ export default function HabitsScreen() {
       setTodayStatuses((prev) => ({ ...prev, [habitId]: current }));
       Alert.alert("Error", "Network error — try again");
     }
+  }
+
+  function handleCardPress(habitId: string) {
+    if (mode === "+") {
+      updateStatus(habitId, "DONE");
+    } else if (mode === "-") {
+      updateStatus(habitId, "UNSET");
+    } else {
+      // Default: toggle done on status icon tap
+      const current = todayStatuses[habitId] ?? "UNSET";
+      updateStatus(habitId, current === "DONE" ? "UNSET" : "DONE");
+    }
+  }
+
+  function handleToggleMissed(habitId: string) {
+    const current = todayStatuses[habitId] ?? "UNSET";
+    updateStatus(habitId, current === "MISSED" ? "UNSET" : "MISSED");
+  }
+
+  function handleDelete(habitId: string) {
+    Alert.alert("Remove Habit", "Are you sure?", [
+      { text: "Cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const res = await fetch(`${API_URL}/habits/${habitId}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) {
+              const body = await res.json();
+              Alert.alert("Error", body.error ?? "Failed to delete");
+              return;
+            }
+            setHabits((prev) => prev.filter((h) => h.id !== habitId));
+          } catch {
+            Alert.alert("Error", "Network error — try again");
+          }
+        },
+      },
+    ]);
+  }
+
+  function toggleMode(next: Mode) {
+    setMode((prev) => (prev === next ? null : next));
   }
 
   const done = habits.filter((h) => todayStatuses[h.id] === "DONE").length;
@@ -115,21 +156,18 @@ export default function HabitsScreen() {
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => navigation.navigate("CreateHabit")}
+            style={[styles.modeBtn, mode === "+" && styles.modeBtnPlus]}
+            onPress={() => toggleMode("+")}
           >
-            <Text style={styles.iconBtnText}>+</Text>
+            <Text style={[styles.modeBtnText, mode === "+" && styles.modeBtnTextPlus]}>
+              +
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.iconBtn, deleteMode && styles.iconBtnDanger]}
-            onPress={() => setDeleteMode(!deleteMode)}
+            style={[styles.modeBtn, mode === "-" && styles.modeBtnMinus]}
+            onPress={() => toggleMode("-")}
           >
-            <Text
-              style={[
-                styles.iconBtnText,
-                deleteMode && styles.iconBtnTextDanger,
-              ]}
-            >
+            <Text style={[styles.modeBtnText, mode === "-" && styles.modeBtnTextMinus]}>
               −
             </Text>
           </TouchableOpacity>
@@ -154,6 +192,15 @@ export default function HabitsScreen() {
         data={habits}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        ListFooterComponent={
+          <TouchableOpacity
+            style={styles.skeletonCard}
+            onPress={() => navigation.navigate("CreateHabit")}
+          >
+            <Text style={styles.skeletonPlus}>+</Text>
+            <Text style={styles.skeletonText}>Add new habit</Text>
+          </TouchableOpacity>
+        }
         renderItem={({ item }) => {
           const status = todayStatuses[item.id] ?? "UNSET";
           const nameColor =
@@ -163,97 +210,90 @@ export default function HabitsScreen() {
                 ? "#ff5555"
                 : "#98eaff";
           const subtext =
-            status === "DONE"
-              ? "Completed"
-              : status === "MISSED"
-                ? "Missed"
-                : "Tap to mark done";
+            mode === "+"
+              ? "Tap to mark done"
+              : mode === "-"
+                ? "Tap to undo"
+                : status === "DONE"
+                  ? "Completed"
+                  : status === "MISSED"
+                    ? "Missed"
+                    : "Tap to mark done";
 
           return (
-            <View style={styles.habitCard}>
-              <TouchableOpacity
-                style={styles.statusIcon}
-                onPress={() => handleCheckIn(item.id)}
-              >
-                {status === "DONE" && <CheckIcon size={40} />}
-                {status === "MISSED" && <XIcon size={40} />}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.habitInfo}
-                onPress={() =>
-                  navigation.navigate("HabitDetail", {
-                    id: item.id,
-                    name: item.name,
-                    notes: item.notes,
-                    frequency: { type: item.frequencyType ?? "DAILY", count: item.frequencyCount ?? 1 },
-                  })
-                }
-              >
-                <Text
-                  style={[
-                    styles.habitName,
-                    {
-                      color: nameColor,
-                      textDecorationLine:
-                        status === "MISSED" ? "line-through" : "none",
-                    },
-                  ]}
-                >
-                  {item.name}
-                </Text>
-                <Text style={styles.habitSub}>{subtext}</Text>
-              </TouchableOpacity>
-              {!deleteMode ? (
+            <Swipeable
+              renderRightActions={() => (
                 <TouchableOpacity
-                  onPress={() =>
-                    navigation.navigate("EditHabit", {
-                      id: item.id,
-                      name: item.name,
-                      notes: item.notes,
-                      frequency: { type: item.frequencyType ?? "DAILY", count: item.frequencyCount ?? 1 },
-                    })
-                  }
+                  style={swipeDeleteBtn}
+                  onPress={() => handleDelete(item.id)}
                 >
-                  <Text style={styles.editText}>Edit</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  onPress={() =>
-                    Alert.alert("Remove Habit", "Are you sure?", [
-                      { text: "Cancel" },
-                      {
-                        text: "Delete",
-                        style: "destructive",
-                        onPress: async () => {
-                          try {
-                            const res = await fetch(
-                              `${API_URL}/habits/${item.id}`,
-                              {
-                                method: "DELETE",
-                                headers: { Authorization: `Bearer ${token}` },
-                              },
-                            );
-                            if (!res.ok) {
-                              const body = await res.json();
-                              Alert.alert(
-                                "Error",
-                                body.error ?? "Failed to delete",
-                              );
-                              return;
-                            }
-                            setHabits(habits.filter((h) => h.id !== item.id));
-                          } catch {
-                            Alert.alert("Error", "Network error — try again");
-                          }
-                        },
-                      },
-                    ])
-                  }
-                >
-                  <Text style={styles.deleteText}>✕</Text>
+                  <Text style={swipeDeleteText}>Delete</Text>
                 </TouchableOpacity>
               )}
-            </View>
+            >
+              <TouchableOpacity
+                style={styles.habitCard}
+                onPress={() => handleCardPress(item.id)}
+                activeOpacity={mode ? 0.6 : 1}
+              >
+                <View
+                  style={[
+                    styles.statusIcon,
+                    status === "DONE" && styles.statusIconDone,
+                    status === "MISSED" && styles.statusIconMissed,
+                  ]}
+                >
+                  {status === "DONE" && <CheckIcon size={40} />}
+                  {status === "MISSED" && <XIcon size={40} />}
+                </View>
+                <TouchableOpacity
+                  style={styles.habitInfo}
+                  onPress={() =>
+                    mode
+                      ? handleCardPress(item.id)
+                      : navigation.navigate("HabitDetail", {
+                          id: item.id,
+                          name: item.name,
+                          notes: item.notes,
+                          frequency: {
+                            type: item.frequencyType ?? "DAILY",
+                            count: item.frequencyCount ?? 1,
+                          },
+                        })
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.habitName,
+                      {
+                        color: nameColor,
+                        textDecorationLine:
+                          status === "MISSED" ? "line-through" : "none",
+                      },
+                    ]}
+                  >
+                    {item.name}
+                  </Text>
+                  <Text style={styles.habitSub}>{subtext}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.missedBtn,
+                    status === "MISSED" && styles.missedBtnActive,
+                  ]}
+                  onPress={() => handleToggleMissed(item.id)}
+                >
+                  <Text
+                    style={[
+                      styles.missedBtnText,
+                      status === "MISSED" && styles.missedBtnTextActive,
+                    ]}
+                  >
+                    {status === "MISSED" ? "Undo" : "Missed"}
+                  </Text>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            </Swipeable>
           );
         }}
       />
@@ -288,10 +328,9 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     flexDirection: "row",
-    alignItems: "center",
     gap: 10,
   },
-  iconBtn: {
+  modeBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
@@ -301,16 +340,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(152,234,255,0.12)",
   },
-  iconBtnDanger: {
-    backgroundColor: "rgba(134,0,0,0.4)",
-    borderColor: "rgba(255,85,85,0.3)",
+  modeBtnPlus: {
+    backgroundColor: "rgba(0,153,81,0.3)",
+    borderColor: "#009951",
   },
-  iconBtnText: {
-    color: "#98eaff",
+  modeBtnMinus: {
+    backgroundColor: "rgba(134,0,0,0.3)",
+    borderColor: "#860000",
+  },
+  modeBtnText: {
+    color: "#3a7a5a",
     fontSize: 22,
     lineHeight: 26,
   },
-  iconBtnTextDanger: {
+  modeBtnTextPlus: {
+    color: "#98FF9D",
+  },
+  modeBtnTextMinus: {
     color: "#ff5555",
   },
   progressCard: {
@@ -380,9 +426,11 @@ const styles = StyleSheet.create({
     borderColor: "rgba(152,234,255,0.1)",
     flexShrink: 0,
   },
-  statusIconLabel: {
-    fontSize: 20,
-    fontWeight: "bold",
+  statusIconDone: {
+    borderColor: "#009951",
+  },
+  statusIconMissed: {
+    borderColor: "#860000",
   },
   habitInfo: {
     flex: 1,
@@ -396,12 +444,56 @@ const styles = StyleSheet.create({
     color: "#3a7a5a",
     marginTop: 2,
   },
-  editText: {
-    fontSize: 13,
-    color: "rgba(152,234,255,0.4)",
+  missedBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(134,0,0,0.4)",
   },
-  deleteText: {
-    fontSize: 16,
+  missedBtnActive: {
+    backgroundColor: "rgba(134,0,0,0.2)",
+    borderColor: "#860000",
+  },
+  missedBtnText: {
+    fontSize: 12,
+    color: "rgba(255,85,85,0.5)",
+  },
+  missedBtnTextActive: {
     color: "#ff5555",
   },
+  skeletonCard: {
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "rgba(152,255,157,0.25)",
+    borderStyle: "dashed",
+  },
+  skeletonPlus: {
+    fontSize: 22,
+    color: "#98FF9D",
+    lineHeight: 26,
+  },
+  skeletonText: {
+    fontSize: 15,
+    color: "#98FF9D",
+  },
 });
+
+const swipeDeleteBtn = {
+  backgroundColor: "#860000",
+  justifyContent: "center" as const,
+  alignItems: "center" as const,
+  paddingHorizontal: 24,
+  borderRadius: 16,
+  marginLeft: 8,
+};
+
+const swipeDeleteText = {
+  color: "#fff",
+  fontSize: 13,
+  fontWeight: "600" as const,
+};

@@ -19,11 +19,15 @@ Stack: React Native
 | Custom tab bar | ✅ Done (floating, Feather icons) |
 | SVG check/X icons | ✅ Done (react-native-svg) |
 | Loading states (login/register) | ❌ Not built |
-| Real streaks | ❌ Not built (mock on Profile) |
+| Real streaks | ✅ Working (frequency-aware, `utils/streak.ts`) |
 | Reminders / push notifications | ❌ Not built |
 | Progress analytics | ❌ Partial (Profile shows basic stats) |
-| Habit rules / frequency | ❌ Not built |
-| Individual habit detail view | ❌ Not built |
+| Habit rules / frequency | ✅ Working (DAILY/WEEKLY/MONTHLY/YEARLY + count) |
+| Individual habit detail view | ✅ Done (HabitDetailScreen — 30-day dot grid, stats) |
+| Multi-completion logging (e.g. "eat 2x/day") | ✅ Done (`HabitLog`, Daily view) |
+| Calendar screen (Day/Week/Month/Year, scoped by frequency) | ✅ Done |
+| OTA auto-update + native update notifier | ✅ Done |
+| Home screen redesign (swipe-to-delete, +/- modes) | ✅ Done |
 | Home → Dashboard restructure | ❌ Not built |
 | Profile → Account settings | ❌ Not built |
 | Animations | ❌ Not built |
@@ -40,6 +44,10 @@ Completed as part of Mobile Habit Parity epic. All mobile API calls map to exist
 | Delete habit | `DELETE /habits/:id` | — | ✅ |
 | Get habit days | `GET /habit-days` | — | ✅ |
 | Save check-in | `PUT /habit-days` | `{ habitId, date, status }` | ✅ |
+| Get habit logs | `GET /habit-logs` | — | ✅ |
+| Log a completion | `POST /habit-logs` | `{ habitId, loggedAt? }` | ✅ |
+| Undo a completion | `DELETE /habit-logs/:id` | — | ✅ |
+| App version check | `GET /app-version` | — | ✅ |
 
 **No duplicated validation logic on mobile.** The only client-side guard is blocking Save when the name field is empty — this is a UX guard, not business logic. All real validation (ownership, empty name, status enum) lives on the backend.
 

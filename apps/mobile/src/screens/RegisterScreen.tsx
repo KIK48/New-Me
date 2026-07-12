@@ -72,6 +72,7 @@ export default function RegisterScreen({ navigation }: Props) {
           style={styles.input}
           placeholder="Email"
           placeholderTextColor="#98EAFF"
+          keyboardAppearance="dark"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -80,6 +81,7 @@ export default function RegisterScreen({ navigation }: Props) {
           style={styles.input}
           placeholder="Password"
           placeholderTextColor="#98EAFF"
+          keyboardAppearance="dark"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -88,6 +90,7 @@ export default function RegisterScreen({ navigation }: Props) {
           style={styles.input}
           placeholder="Confirm Password"
           placeholderTextColor="#98EAFF"
+          keyboardAppearance="dark"
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           secureTextEntry

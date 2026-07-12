@@ -65,6 +65,7 @@ export default function LoginScreen({ navigation }: Props) {
           style={styles.input}
           placeholder="Email"
           placeholderTextColor="#98EAFF"
+          keyboardAppearance="dark"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -73,6 +74,7 @@ export default function LoginScreen({ navigation }: Props) {
           style={styles.input}
           placeholder="Password"
           placeholderTextColor="#98EAFF"
+          keyboardAppearance="dark"
           value={password}
           onChangeText={setPassword}
           secureTextEntry

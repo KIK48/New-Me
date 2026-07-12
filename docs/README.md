@@ -24,10 +24,10 @@ This repo is set up like a small Jira, but native to GitHub:
 
 No date-based milestones — this project moves at a weekends-whenever pace, so the board is organized by status and phase, not deadlines.
 
-## Current state of the app (as of this doc)
+## Current state of the app (as of 2026-07-12)
 
-- **Web** (React + Vite): full habit CRUD + daily check-in grid. Working.
-- **Mobile** (React Native): auth works, habits are read-only. This is the active gap.
-- **Backend** (Node/Express): shared by both clients, single database. Auth + habit CRUD endpoints exist and are used by web.
+- **Web** (React + Vite): full habit CRUD + daily check-in grid. Working, not actively developed.
+- **Mobile** (React Native / Expo): primary active development area. Full habit CRUD, frequency rules (DAILY/WEEKLY/MONTHLY/YEARLY + count), real streaks, Calendar screen with 4 scoped views, multi-completion logging, OTA auto-update. See [`mobile/requirements.md`](./mobile/requirements.md) for the full status table.
+- **Backend** (Node/Express): shared by both clients, Postgres (NeonDB) in production. Deployed on Render.
 
-Active priority: **Mobile Habit Parity** — bring mobile up to web's functionality.
+Active priority: mobile feature depth (Calendar redesign, multi-completion habits, update mechanism) — see `docs/CHANGELOG.md` `[Unreleased]` for what's shipped but not yet released.

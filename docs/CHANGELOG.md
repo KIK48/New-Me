@@ -18,6 +18,8 @@ When cutting a release, move `[Unreleased]` items into a new dated version secti
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-07-12
+
 ### Mobile
 
 #### Added

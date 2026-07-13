@@ -14,6 +14,7 @@
       }
     },
     "android": {
+      "package": "com.kik48.newme",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",

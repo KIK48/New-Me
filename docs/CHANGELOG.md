@@ -18,6 +18,23 @@ When cutting a release, move `[Unreleased]` items into a new dated version secti
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-07-26
+
+### Mobile
+
+#### Added
+- **Local habit reminders** — new Notification Settings screen (off Profile): master on/off toggle, add/edit/delete reminders scoped to a specific habit or general, cadence reuses the DAILY/WEEKLY/MONTHLY/YEARLY vocabulary habits already use. Delivered entirely on-device via `expo-notifications` — daily/weekly use native repeating triggers, monthly/yearly ("end of month"/"end of year") recompute the real end-of-period date and reschedule on each app open
+- One-time notification permission prompt on first app launch after login (custom prompt before the OS dialog)
+
+#### Fixed
+- **Expired sessions no longer show blank screens.** No screen previously checked for a 401, so an expired 1h access token meant every fetch silently failed while the user still looked logged in. Rotating refresh tokens (30-day sliding expiry — active use never requires re-login, 30 days of inactivity does) now refresh access tokens transparently; if the refresh token itself is dead, the app logs out and redirects to Login instead of showing nothing
+
+### Backend
+
+#### Added
+- `NotificationRule` model + `/notifications` routes (master toggle, rule CRUD)
+- Rotating refresh tokens: `POST /auth/refresh` (validates + rotates), `POST /auth/logout` (revokes) — refresh tokens are stored only as a SHA-256 hash, never in plaintext
+
 ## [1.2.0] — 2026-07-12
 
 ### Mobile

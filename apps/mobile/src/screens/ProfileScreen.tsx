@@ -6,9 +6,11 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../context/AuthContext";
 import { API_URL } from "../api/client";
+import { AppStack } from "../navigation/types";
 import {
   todayISO,
   getMondayISO,
@@ -17,6 +19,7 @@ import {
 import { calculateStreak } from "../utils/streak";
 
 type DayStatus = "UNSET" | "DONE" | "MISSED";
+type Nav = NativeStackNavigationProp<AppStack>;
 
 // Decode JWT payload to extract user email without a library
 function getEmailFromToken(token: string): string {
@@ -30,6 +33,7 @@ function getEmailFromToken(token: string): string {
 
 export default function ProfileScreen() {
   const { token, logout, authorizedFetch } = useAuth();
+  const navigation = useNavigation<Nav>();
   const [habits, setHabits] = useState<any[]>([]);
   const [allDays, setAllDays] = useState<any[]>([]);
 
@@ -179,6 +183,14 @@ export default function ProfileScreen() {
             })}
           </View>
         )}
+
+        {/* Notification settings */}
+        <TouchableOpacity
+          style={styles.notifBtn}
+          onPress={() => navigation.navigate("NotificationSettings")}
+        >
+          <Text style={styles.notifBtnText}>Notifications</Text>
+        </TouchableOpacity>
 
         {/* Sign out */}
         <TouchableOpacity style={styles.signOutBtn} onPress={logout}>
@@ -340,6 +352,19 @@ const styles = StyleSheet.create({
     color: "#3a7a5a",
     width: 28,
     textAlign: "right",
+  },
+  notifBtn: {
+    alignSelf: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(152,234,255,0.15)",
+    marginTop: 4,
+  },
+  notifBtnText: {
+    color: "#98eaff",
+    fontSize: 14,
   },
   signOutBtn: {
     alignSelf: "center",

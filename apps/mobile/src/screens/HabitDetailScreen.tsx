@@ -39,15 +39,13 @@ function freqLabel(frequency: { type: string; count: number }): string {
 
 export default function HabitDetailScreen({ route, navigation }: Props) {
   const { id, name, notes, frequency } = route.params;
-  const { token } = useAuth();
+  const { token, authorizedFetch } = useAuth();
   const [allDays, setAllDays] = useState<Record<string, DayStatus>>({});
 
   useFocusEffect(
     useCallback(() => {
       if (!token) return;
-      fetch(`${API_URL}/habit-days`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      authorizedFetch(`${API_URL}/habit-days`)
         .then((r) => r.json())
         .then((data: any[]) => {
           const map: Record<string, DayStatus> = {};
@@ -79,9 +77,8 @@ export default function HabitDetailScreen({ route, navigation }: Props) {
         style: "destructive",
         onPress: async () => {
           try {
-            const res = await fetch(`${API_URL}/habits/${id}`, {
+            const res = await authorizedFetch(`${API_URL}/habits/${id}`, {
               method: "DELETE",
-              headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
               navigation.goBack();

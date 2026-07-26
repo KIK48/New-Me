@@ -18,7 +18,7 @@ const VIEW_OPTIONS: { key: ViewMode; label: string }[] = [
 ];
 
 export default function WeekScreen() {
-  const { token } = useAuth();
+  const { token, authorizedFetch } = useAuth();
   const isFocused = useIsFocused();
 
   const [viewMode, setViewMode] = useState<ViewMode>("weekly");
@@ -39,15 +39,9 @@ export default function WeekScreen() {
     if (!token || !isFocused) return;
 
     Promise.all([
-      fetch(`${API_URL}/habits`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then((r) => r.json()),
-      fetch(`${API_URL}/habit-days`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then((r) => r.json()),
-      fetch(`${API_URL}/habit-logs`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then((r) => r.json()),
+      authorizedFetch(`${API_URL}/habits`).then((r) => r.json()),
+      authorizedFetch(`${API_URL}/habit-days`).then((r) => r.json()),
+      authorizedFetch(`${API_URL}/habit-logs`).then((r) => r.json()),
     ])
       .then(([habitsData, daysData, logsData]) => {
         setHabits(Array.isArray(habitsData) ? habitsData : []);
@@ -75,12 +69,9 @@ export default function WeekScreen() {
     }));
 
     try {
-      const res = await fetch(`${API_URL}/habit-days`, {
+      const res = await authorizedFetch(`${API_URL}/habit-days`, {
         method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ habitId, date: dayISO, status: next }),
       });
       if (!res.ok) {
@@ -113,12 +104,9 @@ export default function WeekScreen() {
     setLogs((prev) => [optimisticLog, ...prev]);
 
     try {
-      const res = await fetch(`${API_URL}/habit-logs`, {
+      const res = await authorizedFetch(`${API_URL}/habit-logs`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ habitId }),
       });
       if (!res.ok) throw new Error("Failed to log");
@@ -135,9 +123,8 @@ export default function WeekScreen() {
     setLogs((prev) => prev.filter((l) => l.id !== logId));
 
     try {
-      const res = await fetch(`${API_URL}/habit-logs/${logId}`, {
+      const res = await authorizedFetch(`${API_URL}/habit-logs/${logId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Failed to delete");
     } catch {

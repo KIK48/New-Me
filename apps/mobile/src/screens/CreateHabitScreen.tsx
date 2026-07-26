@@ -33,7 +33,7 @@ function countRange(type: FrequencyType): number[] {
 }
 
 export default function CreateHabitScreen({ navigation }: Props) {
-  const { token } = useAuth();
+  const { authorizedFetch } = useAuth();
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
   const [freqType, setFreqType] = useState<FrequencyType>("DAILY");
@@ -44,12 +44,9 @@ export default function CreateHabitScreen({ navigation }: Props) {
     if (!name.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/habits`, {
+      const res = await authorizedFetch(`${API_URL}/habits`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), notes: notes.trim() || undefined, frequencyType: freqType, frequencyCount: freqCount }),
       });
       if (!res.ok) {

@@ -38,7 +38,7 @@ function countLabel(type: FrequencyType, count: number): string {
 }
 
 export default function EditHabitScreen({ navigation, route }: Props) {
-  const { token } = useAuth();
+  const { authorizedFetch } = useAuth();
   const { id, name: initialName, notes: initialNotes, frequency: initialFreq } = route.params;
   const [name, setName] = useState(initialName);
   const [notes, setNotes] = useState(initialNotes ?? "");
@@ -55,12 +55,9 @@ export default function EditHabitScreen({ navigation, route }: Props) {
     if (!name.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/habits/${id}`, {
+      const res = await authorizedFetch(`${API_URL}/habits/${id}`, {
         method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
           notes: notes.trim() || null,

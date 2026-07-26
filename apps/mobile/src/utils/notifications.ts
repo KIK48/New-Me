@@ -104,14 +104,3 @@ export async function syncScheduledNotifications(rules: NotificationRule[]): Pro
     }
   }
 }
-
-export async function sendTestNotification(): Promise<void> {
-  await Notifications.scheduleNotificationAsync({
-    content: { title: "New Me", body: "Test notification — if you see this, it works." },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-      seconds: 3,
-      repeats: false,
-    },
-  });
-}

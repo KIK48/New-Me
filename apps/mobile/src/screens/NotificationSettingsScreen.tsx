@@ -13,7 +13,7 @@ import { useIsFocused, useNavigation } from "@react-navigation/native";
 import * as Notifications from "expo-notifications";
 import { useAuth } from "../context/AuthContext";
 import { API_URL } from "../api/client";
-import { syncScheduledNotifications, sendTestNotification, NotificationRule, Cadence } from "../utils/notifications";
+import { syncScheduledNotifications, NotificationRule, Cadence } from "../utils/notifications";
 
 const CADENCE_OPTIONS: { value: Cadence; label: string }[] = [
   { value: "DAILY", label: "Daily" },
@@ -186,18 +186,6 @@ export default function NotificationSettingsScreen() {
     }
   }
 
-  // TODO: remove once real scheduled reminders have been confirmed working on device —
-  // this exists purely so you don't have to wait a day/week/month/year to see one fire.
-  async function handleTestNotification() {
-    const { status } = await Notifications.requestPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission needed", "Enable notifications for New Me in your device Settings first.");
-      return;
-    }
-    await sendTestNotification();
-    Alert.alert("Sent", "You should see a notification in a few seconds — try locking your phone.");
-  }
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -221,10 +209,6 @@ export default function NotificationSettingsScreen() {
             <View style={[styles.toggleThumb, enabled && styles.toggleThumbOn]} />
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity style={styles.testBtn} onPress={handleTestNotification}>
-          <Text style={styles.testBtnText}>Send Test Notification</Text>
-        </TouchableOpacity>
 
         <Text style={styles.sectionLabel}>REMINDERS</Text>
 
@@ -393,15 +377,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#3a7a5a",
   },
   toggleThumbOn: { backgroundColor: "#fff", alignSelf: "flex-end" },
-  testBtn: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#009951",
-  },
-  testBtnText: { fontSize: 13, color: "#98FF9D", fontWeight: "600" },
   sectionLabel: {
     fontSize: 10,
     textTransform: "uppercase",

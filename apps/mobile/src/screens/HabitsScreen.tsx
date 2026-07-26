@@ -24,7 +24,7 @@ type Mode = "+" | "-" | null;
 
 
 export default function HabitsScreen() {
-  const { token } = useAuth();
+  const { token, authorizedFetch } = useAuth();
   const navigation = useNavigation<Nav>();
   const [habits, setHabits] = useState<any[]>([]);
   const [todayStatuses, setTodayStatuses] = useState<Record<string, DayStatus>>({});
@@ -41,12 +41,8 @@ export default function HabitsScreen() {
     const today = todayISO();
 
     Promise.all([
-      fetch(`${API_URL}/habits`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then((r) => r.json()),
-      fetch(`${API_URL}/habit-days`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then((r) => r.json()),
+      authorizedFetch(`${API_URL}/habits`).then((r) => r.json()),
+      authorizedFetch(`${API_URL}/habit-days`).then((r) => r.json()),
     ])
       .then(([habitsData, daysData]) => {
         setHabits(Array.isArray(habitsData) ? habitsData : []);
@@ -73,12 +69,9 @@ export default function HabitsScreen() {
     setTodayStatuses((prev) => ({ ...prev, [habitId]: next }));
 
     try {
-      const res = await fetch(`${API_URL}/habit-days`, {
+      const res = await authorizedFetch(`${API_URL}/habit-days`, {
         method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ habitId, date: today, status: next }),
       });
       if (!res.ok) {
@@ -116,9 +109,8 @@ export default function HabitsScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            const res = await fetch(`${API_URL}/habits/${habitId}`, {
+            const res = await authorizedFetch(`${API_URL}/habits/${habitId}`, {
               method: "DELETE",
-              headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) {
               const body = await res.json();

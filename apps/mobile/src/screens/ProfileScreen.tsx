@@ -29,7 +29,7 @@ function getEmailFromToken(token: string): string {
 }
 
 export default function ProfileScreen() {
-  const { token, logout } = useAuth();
+  const { token, logout, authorizedFetch } = useAuth();
   const [habits, setHabits] = useState<any[]>([]);
   const [allDays, setAllDays] = useState<any[]>([]);
 
@@ -44,12 +44,8 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (!token || !isFocused) return;
     Promise.all([
-      fetch(`${API_URL}/habits`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then((r) => r.json()),
-      fetch(`${API_URL}/habit-days`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then((r) => r.json()),
+      authorizedFetch(`${API_URL}/habits`).then((r) => r.json()),
+      authorizedFetch(`${API_URL}/habit-days`).then((r) => r.json()),
     ])
       .then(([habitsData, daysData]) => {
         setHabits(Array.isArray(habitsData) ? habitsData : []);

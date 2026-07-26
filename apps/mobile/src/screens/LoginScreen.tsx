@@ -39,7 +39,7 @@ export default function LoginScreen({ navigation }: Props) {
       });
       const data = await res.json();
       if (data.token) {
-        await login(data.token);
+        await login(data.token, data.refreshToken);
       } else {
         setError(data.error ?? "Invalid email or password.");
       }

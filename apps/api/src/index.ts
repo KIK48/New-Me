@@ -5,6 +5,7 @@ import cors from "cors";
 import habitsRouter from "./routes/habits.routes";
 import habitDay from "./routes/habitDay.routes";
 import habitLog from "./routes/habitLog.routes";
+import notifications from "./routes/notifications.routes";
 import authRouter from "./routes/auth.routes";
 import { requireAuth } from "./middleware/requireAuth";
 
@@ -30,6 +31,7 @@ app.use("/auth", authRouter);
 app.use("/habits", requireAuth, habitsRouter);
 app.use("/habit-days", requireAuth, habitDay);
 app.use("/habit-logs", requireAuth, habitLog);
+app.use("/notifications", requireAuth, notifications);
 
 const port = process.env.PORT ?? 4000;
 app.listen(port, () => console.log(`Server running on http://localhost:${port}`));

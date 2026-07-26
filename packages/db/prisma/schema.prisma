@@ -10,13 +10,16 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  password      String
-  habits        Habit[]
-  refreshTokens RefreshToken[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id                  String             @id @default(cuid())
+  email               String             @unique
+  password            String
+  // Master switch — lets a user pause every reminder without deleting them.
+  notificationsEnabled Boolean           @default(false)
+  habits              Habit[]
+  refreshTokens       RefreshToken[]
+  notificationRules   NotificationRule[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 }
 
 // Opaque, rotated on every use — only the SHA-256 hash is stored, so a leaked
@@ -52,6 +55,7 @@ model Habit {
   user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   days HabitDay[]
   logs HabitLog[]
+  notificationRules NotificationRule[]
 }
 
 model HabitDay {
@@ -75,6 +79,28 @@ model HabitLog {
   habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
 
   @@index([habitId, loggedAt])
+}
+
+// A single reminder rule. habitId null = a general reminder (e.g. an
+// end-of-day nudge) not tied to any one habit. Scheduling itself happens
+// entirely on-device (expo-notifications, local notifications) — this table
+// is just the source of truth the app resyncs its local OS schedule from,
+// so rules survive reinstalls/new devices the same way habits do.
+model NotificationRule {
+  id        String        @id @default(cuid())
+  userId    String
+  habitId   String?
+  cadence   FrequencyType // reuses the same DAILY/WEEKLY/MONTHLY/YEARLY vocabulary as Habit.frequencyType
+  hour      Int           // 0-23, local device time
+  minute    Int           // 0-59
+  enabled   Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habit Habit? @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 enum DayStatus {

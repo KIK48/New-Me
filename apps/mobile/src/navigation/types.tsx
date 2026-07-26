@@ -21,4 +21,5 @@ export type AppStack = {
   CreateHabit: undefined;
   EditHabit: { id: string; name: string; notes?: string | null; frequency: HabitFrequency };
   HabitDetail: { id: string; name: string; notes?: string | null; frequency: HabitFrequency };
+  NotificationSettings: undefined;
 };

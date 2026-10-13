@@ -1,8 +1,12 @@
 import React from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
 import { CheckIcon, XIcon } from "../../components/HabitIcons";
-import { formatTime, localDateOf, todayISO } from "../../utils/dates";
+import AnimatedProgressBar from "../../components/AnimatedProgressBar";
+import MultiCountHabitCard from "../../components/MultiCountHabitCard";
+import { localDateOf, todayISO } from "../../utils/dates";
 import { DayStatus, Habit, HabitLogEntry, StatusMap } from "./types";
+import { BORDER, BORDER_DONE, BORDER_MISSED } from "../../theme";
+import { slideIn } from "../../components/SlideInView";
 
 interface Props {
   dateISO: string;
@@ -40,14 +44,17 @@ export default function DailyView({
     return logs.filter((l) => l.habitId === habitId && localDateOf(l.loggedAt) === dateISO);
   }
 
-  function isComplete(h: Habit) {
+  // A multi-count habit (target > 1) contributes partial credit — e.g. 1 of 2
+  // logs is worth 0.5 of a habit — instead of only counting once fully done.
+  function completionFraction(h: Habit): number {
     const target = h.frequencyCount ?? 1;
-    if (target > 1) return logsForHabitOnDate(h.id).length >= target;
-    return statuses[h.id]?.[dateISO] === "DONE";
+    if (target > 1) return Math.min(logsForHabitOnDate(h.id).length / target, 1);
+    return statuses[h.id]?.[dateISO] === "DONE" ? 1 : 0;
   }
 
-  const done = habits.filter(isComplete).length;
-  const pct = habits.length > 0 ? Math.round((done / habits.length) * 100) : 0;
+  const fractionalDone = habits.reduce((sum, h) => sum + completionFraction(h), 0);
+  const pct = habits.length > 0 ? Math.round((fractionalDone / habits.length) * 100) : 0;
+  const done = habits.filter((h) => completionFraction(h) >= 1).length;
 
   return (
     <View style={styles.wrap}>
@@ -62,9 +69,11 @@ export default function DailyView({
           </TouchableOpacity>
         </View>
         <View style={styles.progressRow}>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${pct}%` as any }]} />
-          </View>
+          <AnimatedProgressBar
+            pct={pct}
+            trackStyle={styles.progressTrack}
+            fillStyle={styles.progressFill}
+          />
           <Text style={styles.progressCount}>
             {done}/{habits.length}
           </Text>
@@ -75,73 +84,28 @@ export default function DailyView({
         data={habits}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) =>
+          slideIn(index, () => {
           const target = item.frequencyCount ?? 1;
 
           if (target > 1) {
             const dayLogs = logsForHabitOnDate(item.id).sort((a, b) =>
               a.loggedAt < b.loggedAt ? 1 : -1,
             );
-            const count = dayLogs.length;
-            const barPct = Math.min(Math.round((count / target) * 100), 100);
-            const isFullyDone = count >= target;
             const isMissed = statuses[item.id]?.[dateISO] === "MISSED";
 
             return (
-              <View style={styles.multiCard}>
-                <View style={styles.cardTop}>
-                  <TouchableOpacity
-                    disabled={!canLogToday}
-                    style={[
-                      styles.statusIcon,
-                      isFullyDone && styles.statusIconDone,
-                      !isFullyDone && isMissed && styles.statusIconMissed,
-                    ]}
-                    onPress={() => onAddLog(item.id)}
-                  >
-                    {isFullyDone && <CheckIcon size={28} />}
-                    {!isFullyDone && isMissed && <XIcon size={28} />}
-                  </TouchableOpacity>
-                  <Text style={styles.habitName} numberOfLines={1}>
-                    {item.name}
-                  </Text>
-                  <Text style={styles.countText}>
-                    {count}/{target}
-                  </Text>
-                </View>
-                <View style={styles.barTrack}>
-                  <View style={[styles.barFill, { width: `${barPct}%` as any }]} />
-                </View>
-
-                {dayLogs.length > 0 && (
-                  <View style={styles.logRows}>
-                    {dayLogs.map((log) => (
-                      <View key={log.id} style={styles.logRow}>
-                        <Text style={styles.logTime}>{formatTime(log.loggedAt)}</Text>
-                        <TouchableOpacity onPress={() => onDeleteLog(log.id)}>
-                          <Text style={styles.logRemove}>Remove</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                <View style={styles.multiActionsRow}>
-                  {canLogToday && (
-                    <TouchableOpacity style={styles.addLogBtn} onPress={() => onAddLog(item.id)}>
-                      <Text style={styles.addLogText}>+ Log now</Text>
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    style={[styles.missedBtn, isMissed && styles.missedBtnActive]}
-                    onPress={() => onCheckIn(item.id, isMissed ? "UNSET" : "MISSED")}
-                  >
-                    <Text style={[styles.missedBtnText, isMissed && styles.missedBtnTextActive]}>
-                      {isMissed ? "Undo" : "Missed"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+              <MultiCountHabitCard
+                name={item.name}
+                count={dayLogs.length}
+                target={target}
+                canLog={canLogToday}
+                isMissed={isMissed}
+                logs={dayLogs}
+                onAddLog={() => onAddLog(item.id)}
+                onDeleteLog={onDeleteLog}
+                onToggleMissed={() => onCheckIn(item.id, isMissed ? "UNSET" : "MISSED")}
+              />
             );
           }
 
@@ -151,7 +115,7 @@ export default function DailyView({
 
           return (
             <TouchableOpacity
-              style={styles.habitCard}
+              style={[styles.habitCard, status === "MISSED" && styles.cardMissed, status === "DONE" && styles.cardDone]}
               onPress={() => onCheckIn(item.id, status === "DONE" ? "UNSET" : "DONE")}
             >
               <View
@@ -191,16 +155,22 @@ export default function DailyView({
               </TouchableOpacity>
             </TouchableOpacity>
           );
-        }}
+          })
+        }
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Outline turns light green once the habit is completed
+  cardDone: { borderColor: BORDER_DONE },
+  cardMissed: { borderColor: BORDER_MISSED },
   wrap: { flex: 1 },
   dateCard: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 16,
     marginHorizontal: 16,
     marginBottom: 12,
@@ -262,6 +232,8 @@ const styles = StyleSheet.create({
   },
   habitCard: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 14,
     padding: 12,
     flexDirection: "row",
@@ -312,77 +284,5 @@ const styles = StyleSheet.create({
   },
   missedBtnTextActive: {
     color: "#ff5555",
-  },
-  multiCard: {
-    backgroundColor: "#085331",
-    borderRadius: 14,
-    padding: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: -4, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 10,
-  },
-  multiActionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  countText: {
-    fontSize: 14,
-    color: "#98FF9D",
-    fontWeight: "600",
-  },
-  barTrack: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    overflow: "hidden",
-  },
-  barFill: {
-    height: "100%",
-    borderRadius: 4,
-    backgroundColor: "#009951",
-  },
-  logRows: {
-    marginTop: 10,
-    gap: 6,
-  },
-  logRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#000",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  logTime: {
-    fontSize: 12,
-    color: "#98eaff",
-  },
-  logRemove: {
-    fontSize: 11,
-    color: "rgba(255,85,85,0.7)",
-  },
-  addLogBtn: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#009951",
-  },
-  addLogText: {
-    fontSize: 12,
-    color: "#98FF9D",
-    fontWeight: "600",
   },
 });

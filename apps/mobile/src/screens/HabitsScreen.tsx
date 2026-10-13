@@ -5,6 +5,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Animated,
+  RefreshControl,
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import React, { useState, useEffect } from "react";
@@ -15,19 +17,56 @@ import { AppStack } from "../navigation/types";
 import { API_URL } from "../api/client";
 import { todayISO } from "../utils/dates";
 import { CheckIcon, XIcon } from "../components/HabitIcons";
+import AnimatedProgressBar from "../components/AnimatedProgressBar";
+import MultiCountHabitCard from "../components/MultiCountHabitCard";
+import { localDateOf } from "../utils/dates";
+import { countInPeriod, dayCounts, periodWord, usesLogs } from "../utils/periods";
+import { BORDER, BORDER_DONE, BORDER_MISSED } from "../theme";
+import { slideIn } from "../components/SlideInView";
 
 // HabitsScreen lives inside the tab navigator, but CreateHabit/EditHabit
 // are on the parent AppStack — useNavigation gives access to the full stack
 type Nav = NativeStackNavigationProp<AppStack>;
 type DayStatus = "UNSET" | "DONE" | "MISSED";
 type Mode = "+" | "-" | null;
+interface HabitLogEntry {
+  id: string;
+  habitId: string;
+  loggedAt: string;
+}
 
 
 export default function HabitsScreen() {
   const { token, authorizedFetch } = useAuth();
   const navigation = useNavigation<Nav>();
   const [habits, setHabits] = useState<any[]>([]);
-  const [todayStatuses, setTodayStatuses] = useState<Record<string, DayStatus>>({});
+  // Full history (habitId -> date -> status), not just today: weekly/monthly/yearly
+  // habits need their whole period to show "1/2 this week", and it keeps Home
+  // reading the same HabitDay data the Calendar writes.
+  const [allStatuses, setAllStatuses] = useState<Record<string, Record<string, DayStatus>>>({});
+  const [logs, setLogs] = useState<HabitLogEntry[]>([]);
+  const [loaded, setLoaded] = useState(false); // gates the empty state so it doesn't flash before data arrives
+  const [refreshing, setRefreshing] = useState(false);
+  const todayStatuses: Record<string, DayStatus> = {};
+  Object.keys(allStatuses).forEach((id) => {
+    todayStatuses[id] = allStatuses[id]?.[todayISO()] ?? "UNSET";
+  });
+
+  // One persistent Animated.Value per habit card, keyed by id, so the scale
+  // bounce survives re-renders (status toggles) instead of resetting mid-animation.
+  const cardScales = React.useRef<Record<string, Animated.Value>>({}).current;
+  function getCardScale(id: string) {
+    if (!cardScales[id]) cardScales[id] = new Animated.Value(1);
+    return cardScales[id];
+  }
+  function bounceCard(id: string, toValue: number) {
+    Animated.spring(getCardScale(id), {
+      toValue,
+      useNativeDriver: true,
+      speed: 40,
+      bounciness: 8,
+    }).start();
+  }
   // +/- mode: tap a habit card to mark done (+) or undo (-)
   const [mode, setMode] = useState<Mode>(null);
 
@@ -36,37 +75,96 @@ export default function HabitsScreen() {
   // Refetch when token loads OR screen gains focus.
   // useIsFocused + useEffect handles both: navigation events AND app restarts where
   // the screen is already focused when the token loads from SecureStore.
-  useEffect(() => {
-    if (!token || !isFocused) return;
-    const today = todayISO();
-
-    Promise.all([
+  function loadData() {
+    return Promise.all([
       authorizedFetch(`${API_URL}/habits`).then((r) => r.json()),
       authorizedFetch(`${API_URL}/habit-days`).then((r) => r.json()),
+      authorizedFetch(`${API_URL}/habit-logs`).then((r) => r.json()),
     ])
-      .then(([habitsData, daysData]) => {
+      .then(([habitsData, daysData, logsData]) => {
         setHabits(Array.isArray(habitsData) ? habitsData : []);
 
-        // Build a map of habitId -> status for today only
-        const map: Record<string, DayStatus> = {};
+        const map: Record<string, Record<string, DayStatus>> = {};
         if (Array.isArray(daysData)) {
-          daysData
-            .filter((d: any) => d.date?.startsWith(today))
-            .forEach((d: any) => {
-              map[d.habitId] = d.status as DayStatus;
-            });
+          daysData.forEach((d: any) => {
+            const dayStr = d.date?.split("T")[0];
+            if (!map[d.habitId]) map[d.habitId] = {};
+            map[d.habitId][dayStr] = d.status as DayStatus;
+          });
         }
-        setTodayStatuses(map);
+        setAllStatuses(map);
+        setLogs(Array.isArray(logsData) ? logsData : []);
       })
-      .catch((err) => console.log("fetch error:", err));
+      .catch((err) => console.log("fetch error:", err))
+      // Even a failed first fetch counts as "loaded" — otherwise a flaky network
+      // would leave the list stuck with no empty state or retry hint
+      .finally(() => setLoaded(true));
+  }
+
+  useEffect(() => {
+    if (!token || !isFocused) return;
+    loadData();
   }, [token, isFocused]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }
+
+  // Completions in the habit's current period (today / this week / month / year),
+  // counting both logs and legacy checkmarks — the same number the Calendar shows.
+  function periodCount(h: any): number {
+    return countInPeriod(dayCounts(h.id, logs, allStatuses[h.id]), h.frequencyType, todayISO());
+  }
+
+  function logsForHabitToday(habitId: string) {
+    const today = todayISO();
+    return logs.filter((l) => l.habitId === habitId && localDateOf(l.loggedAt) === today);
+  }
+
+  async function addLog(habitId: string) {
+    const tempId = `temp-${Date.now()}`;
+    const optimisticLog: HabitLogEntry = { id: tempId, habitId, loggedAt: new Date().toISOString() };
+    setLogs((prev) => [optimisticLog, ...prev]);
+
+    try {
+      const res = await authorizedFetch(`${API_URL}/habit-logs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ habitId }),
+      });
+      if (!res.ok) throw new Error("Failed to log");
+      const saved = await res.json();
+      setLogs((prev) => prev.map((l) => (l.id === tempId ? saved : l)));
+    } catch {
+      setLogs((prev) => prev.filter((l) => l.id !== tempId));
+      Alert.alert("Error", "Failed to save — try again");
+    }
+  }
+
+  async function deleteLog(logId: string) {
+    const removed = logs.find((l) => l.id === logId);
+    setLogs((prev) => prev.filter((l) => l.id !== logId));
+
+    try {
+      const res = await authorizedFetch(`${API_URL}/habit-logs/${logId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+    } catch {
+      if (removed) setLogs((prev) => [removed, ...prev]);
+      Alert.alert("Error", "Failed to undo — try again");
+    }
+  }
 
   async function updateStatus(habitId: string, next: DayStatus) {
     const current = todayStatuses[habitId] ?? "UNSET";
     const today = todayISO();
 
+    const setToday = (status: DayStatus) =>
+      setAllStatuses((prev) => ({ ...prev, [habitId]: { ...(prev[habitId] ?? {}), [today]: status } }));
+
     // Optimistic update
-    setTodayStatuses((prev) => ({ ...prev, [habitId]: next }));
+    setToday(next);
 
     try {
       const res = await authorizedFetch(`${API_URL}/habit-days`, {
@@ -75,11 +173,11 @@ export default function HabitsScreen() {
         body: JSON.stringify({ habitId, date: today, status: next }),
       });
       if (!res.ok) {
-        setTodayStatuses((prev) => ({ ...prev, [habitId]: current }));
+        setToday(current);
         Alert.alert("Error", "Failed to save check-in");
       }
     } catch {
-      setTodayStatuses((prev) => ({ ...prev, [habitId]: current }));
+      setToday(current);
       Alert.alert("Error", "Network error — try again");
     }
   }
@@ -130,8 +228,18 @@ export default function HabitsScreen() {
     setMode((prev) => (prev === next ? null : next));
   }
 
-  const done = habits.filter((h) => todayStatuses[h.id] === "DONE").length;
-  const pct = habits.length > 0 ? Math.round((done / habits.length) * 100) : 0;
+  // A multi-count habit (target > 1) contributes partial credit — e.g. 1 of 2
+  // logs is worth 0.5 of a habit — instead of only counting once fully done.
+  function completionFraction(h: any): number {
+    const target = h.frequencyCount ?? 1;
+    // Judged on the habit's whole period ("1/2 this week"), the same count the
+    // Calendar shows, so both screens always agree.
+    return Math.min(periodCount(h) / target, 1);
+  }
+
+  const fractionalDone = habits.reduce((sum, h) => sum + completionFraction(h), 0);
+  const pct = habits.length > 0 ? Math.round((fractionalDone / habits.length) * 100) : 0;
+  const done = habits.filter((h) => completionFraction(h) >= 1).length;
   const todayLabel = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -170,9 +278,11 @@ export default function HabitsScreen() {
       <View style={styles.progressCard}>
         <Text style={styles.progressDate}>{todayLabel}</Text>
         <View style={styles.progressRow}>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${pct}%` as any }]} />
-          </View>
+          <AnimatedProgressBar
+            pct={pct}
+            trackStyle={styles.progressTrack}
+            fillStyle={styles.progressFill}
+          />
           <Text style={styles.progressCount}>
             {done}/{habits.length}
           </Text>
@@ -184,6 +294,23 @@ export default function HabitsScreen() {
         data={habits}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#98FF9D"
+          />
+        }
+        ListHeaderComponent={
+          loaded && habits.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>No habits yet</Text>
+              <Text style={styles.emptyText}>
+                Start with one small thing you want to do every day. You can add more later.
+              </Text>
+            </View>
+          ) : null
+        }
         ListFooterComponent={
           <TouchableOpacity
             style={styles.skeletonCard}
@@ -193,7 +320,40 @@ export default function HabitsScreen() {
             <Text style={styles.skeletonText}>Add new habit</Text>
           </TouchableOpacity>
         }
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) =>
+          slideIn(index, () => {
+          const target = item.frequencyCount ?? 1;
+
+          if (usesLogs(item.frequencyType, target)) {
+            const dayLogs = logsForHabitToday(item.id).sort((a, b) =>
+              a.loggedAt < b.loggedAt ? 1 : -1,
+            );
+            const isMissed = todayStatuses[item.id] === "MISSED";
+
+            return (
+              <Swipeable
+                renderRightActions={() => (
+                  <TouchableOpacity style={swipeDeleteBtn} onPress={() => handleDelete(item.id)}>
+                    <Text style={swipeDeleteText}>Delete</Text>
+                  </TouchableOpacity>
+                )}
+              >
+                <MultiCountHabitCard
+                  name={item.name}
+                  count={periodCount(item)}
+                  target={target}
+                  periodLabel={(item.frequencyType ?? "DAILY") !== "DAILY" ? periodWord(item.frequencyType) : undefined}
+                  canLog
+                  isMissed={isMissed}
+                  logs={dayLogs}
+                  onAddLog={() => addLog(item.id)}
+                  onDeleteLog={deleteLog}
+                  onToggleMissed={() => updateStatus(item.id, isMissed ? "UNSET" : "MISSED")}
+                />
+              </Swipeable>
+            );
+          }
+
           const status = todayStatuses[item.id] ?? "UNSET";
           const nameColor =
             status === "DONE"
@@ -201,7 +361,9 @@ export default function HabitsScreen() {
               : status === "MISSED"
                 ? "#ff5555"
                 : "#98eaff";
-          const subtext =
+          const isPeriodHabit = (item.frequencyType ?? "DAILY") !== "DAILY";
+          const periodDone = isPeriodHabit ? periodCount(item) : 0;
+          const baseSubtext =
             mode === "+"
               ? "Tap to mark done"
               : mode === "-"
@@ -211,6 +373,10 @@ export default function HabitsScreen() {
                   : status === "MISSED"
                     ? "Missed"
                     : "Tap to mark done";
+          // e.g. "Completed · 1/2 this week" so the period progress is visible on Home
+          const subtext = isPeriodHabit
+            ? `${baseSubtext} · ${periodDone}/${target} ${periodWord(item.frequencyType)}`
+            : baseSubtext;
 
           return (
             <Swipeable
@@ -223,77 +389,87 @@ export default function HabitsScreen() {
                 </TouchableOpacity>
               )}
             >
-              <TouchableOpacity
-                style={styles.habitCard}
-                onPress={() => handleCardPress(item.id)}
-                activeOpacity={mode ? 0.6 : 1}
+              <Animated.View
+                style={{ transform: [{ scale: getCardScale(item.id) }] }}
               >
-                <View
-                  style={[
-                    styles.statusIcon,
-                    status === "DONE" && styles.statusIconDone,
-                    status === "MISSED" && styles.statusIconMissed,
-                  ]}
-                >
-                  {status === "DONE" && <CheckIcon size={40} />}
-                  {status === "MISSED" && <XIcon size={40} />}
-                </View>
                 <TouchableOpacity
-                  style={styles.habitInfo}
-                  onPress={() =>
-                    mode
-                      ? handleCardPress(item.id)
-                      : navigation.navigate("HabitDetail", {
-                          id: item.id,
-                          name: item.name,
-                          notes: item.notes,
-                          frequency: {
-                            type: item.frequencyType ?? "DAILY",
-                            count: item.frequencyCount ?? 1,
-                          },
-                        })
-                  }
+                  style={[styles.habitCard, status === "MISSED" && styles.cardMissed, status === "DONE" && styles.cardDone]}
+                  onPress={() => handleCardPress(item.id)}
+                  onPressIn={() => bounceCard(item.id, 0.97)}
+                  onPressOut={() => bounceCard(item.id, 1)}
+                  activeOpacity={mode ? 0.6 : 1}
                 >
-                  <Text
+                  <View
                     style={[
-                      styles.habitName,
-                      {
-                        color: nameColor,
-                        textDecorationLine:
-                          status === "MISSED" ? "line-through" : "none",
-                      },
+                      styles.statusIcon,
+                      status === "DONE" && styles.statusIconDone,
+                      status === "MISSED" && styles.statusIconMissed,
                     ]}
                   >
-                    {item.name}
-                  </Text>
-                  <Text style={styles.habitSub}>{subtext}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.missedBtn,
-                    status === "MISSED" && styles.missedBtnActive,
-                  ]}
-                  onPress={() => handleToggleMissed(item.id)}
-                >
-                  <Text
-                    style={[
-                      styles.missedBtnText,
-                      status === "MISSED" && styles.missedBtnTextActive,
-                    ]}
+                    {status === "DONE" && <CheckIcon size={40} />}
+                    {status === "MISSED" && <XIcon size={40} />}
+                  </View>
+                  <TouchableOpacity
+                    style={styles.habitInfo}
+                    onPress={() =>
+                      mode
+                        ? handleCardPress(item.id)
+                        : navigation.navigate("HabitDetail", {
+                            id: item.id,
+                            name: item.name,
+                            notes: item.notes,
+                            frequency: {
+                              type: item.frequencyType ?? "DAILY",
+                              count: item.frequencyCount ?? 1,
+                            },
+                          })
+                    }
                   >
-                    {status === "MISSED" ? "Undo" : "Missed"}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.habitName,
+                        {
+                          color: nameColor,
+                          textDecorationLine:
+                            status === "MISSED" ? "line-through" : "none",
+                        },
+                      ]}
+                    >
+                      {item.name}
+                    </Text>
+                    <Text style={styles.habitSub}>{subtext}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.missedBtn,
+                      status === "MISSED" && styles.missedBtnActive,
+                    ]}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={() => handleToggleMissed(item.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.missedBtnText,
+                        status === "MISSED" && styles.missedBtnTextActive,
+                      ]}
+                    >
+                      {status === "MISSED" ? "Undo" : "Missed"}
+                    </Text>
+                  </TouchableOpacity>
                 </TouchableOpacity>
-              </TouchableOpacity>
+              </Animated.View>
             </Swipeable>
           );
-        }}
+          })
+        }
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Outline turns light green once the habit is completed
+  cardDone: { borderColor: BORDER_DONE },
+  cardMissed: { borderColor: BORDER_MISSED },
   container: {
     flex: 1,
     backgroundColor: "#000603",
@@ -353,6 +529,8 @@ const styles = StyleSheet.create({
   },
   progressCard: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 16,
     padding: 20,
     marginHorizontal: 20,
@@ -396,6 +574,8 @@ const styles = StyleSheet.create({
   },
   habitCard: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 16,
     padding: 14,
     flexDirection: "row",
@@ -453,6 +633,22 @@ const styles = StyleSheet.create({
   },
   missedBtnTextActive: {
     color: "#ff5555",
+  },
+  emptyState: {
+    paddingVertical: 24,
+    paddingHorizontal: 8,
+    alignItems: "center",
+  },
+  emptyTitle: {
+    fontSize: 17,
+    color: "#98eaff",
+    marginBottom: 6,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: "#3a7a5a",
+    textAlign: "center",
+    lineHeight: 20,
   },
   skeletonCard: {
     borderRadius: 16,

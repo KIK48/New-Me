@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../../../../packages/db/src/prisma";
 import { generateRefreshToken, hashRefreshToken, refreshTokenExpiry } from "../utils/tokens";
+import { requireAuth, AuthRequest } from "../middleware/requireAuth";
 
 const router = Router();
 
@@ -104,6 +105,16 @@ router.post("/logout", async (req, res) => {
     await prisma.refreshToken.deleteMany({ where: { tokenHash: hashRefreshToken(refreshToken) } });
   }
 
+  res.status(204).send();
+});
+
+// DELETE /auth/account — permanently deletes the signed-in user and all
+// their data (habits, habit days/logs, notification rules, refresh tokens
+// cascade via the schema's onDelete: Cascade). Required by Play/App Store
+// policy: users must be able to delete their account from inside the app.
+router.delete("/account", requireAuth, async (req, res) => {
+  const { userId } = (req as AuthRequest).user;
+  await prisma.user.delete({ where: { id: userId } });
   res.status(204).send();
 });
 

@@ -14,6 +14,7 @@ import * as Notifications from "expo-notifications";
 import { useAuth } from "../context/AuthContext";
 import { API_URL } from "../api/client";
 import { syncScheduledNotifications, NotificationRule, Cadence } from "../utils/notifications";
+import { BORDER } from "../theme";
 
 const CADENCE_OPTIONS: { value: Cadence; label: string }[] = [
   { value: "DAILY", label: "Daily" },
@@ -347,6 +348,8 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingBottom: 110, gap: 12 },
   masterRow: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 16,
     padding: 18,
     flexDirection: "row",
@@ -387,6 +390,8 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 13, color: "#3a7a5a" },
   ruleCard: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 14,
     padding: 14,
     flexDirection: "row",
@@ -429,7 +434,7 @@ const styles = StyleSheet.create({
   },
   addBtnText: { fontSize: 14, color: "#98FF9D" },
   modalRoot: { flex: 1, justifyContent: "flex-end" },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)" },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(0,0,0,0.6)" },
   card: {
     backgroundColor: "#05170e",
     borderTopLeftRadius: 24,

@@ -18,6 +18,33 @@ When cutting a release, move `[Unreleased]` items into a new dated version secti
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-10-13
+
+### Mobile
+
+#### Added
+- **Delete account** — Profile has a Delete Account button (confirmation first) that permanently removes the account and all its data, as App Store / Play policy requires
+- **Animations** — a circle glides between the bottom tabs, the Calendar Day/Week/Month/Year highlight slides to the picked view, progress bars fill smoothly, and habit cards rise in from the bottom each time you open Home, Calendar or Profile (the email card stays put)
+- **Card borders** — every card has an outline: light blue by default, light green once the habit is completed, red when marked missed
+- **Week view progress** — each habit shows a progress bar toward its weekly target, and the percentage at the top is based on every habit's target instead of all 7 days
+- Home: pull-to-refresh and a "No habits yet" empty state
+
+#### Changed
+- **Expo SDK 54 → 57** (React Native 0.86) — requires a full native build, not just an OTA update
+- Profile: Notifications is now a settings row; Delete Account text is readable on the dark background
+- Calendar header label shows which habits the current view holds (e.g. "WEEKLY HABITS") instead of repeating the title
+- Light status-bar icons so the clock and battery are visible on the dark UI
+
+#### Fixed
+- **Home and Calendar no longer disagree** — a weekly/monthly/yearly habit logged in one place now shows the same progress in the other. Every screen counts completions through one shared helper
+- **Multi-log habits (e.g. "workout 2x/month") count across their whole period** — you can log several in one day, and Month/Year views show progress toward the month/year target instead of only the selected day
+- Missing `@expo/vector-icons` dependency (tab bar icons) and the removed `StyleSheet.absoluteFillObject`
+
+### Backend
+
+#### Added
+- `DELETE /auth/account` — deletes the signed-in user; habits, days, logs, reminders and refresh tokens are removed with them via the schema's cascades. **Must be deployed before this app version is used in production**
+
 ## [1.3.0] — 2026-07-26
 
 ### Mobile

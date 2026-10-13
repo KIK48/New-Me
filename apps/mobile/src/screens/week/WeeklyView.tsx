@@ -2,7 +2,11 @@ import React from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
 import { formatDate, todayISO } from "../../utils/dates";
 import { CheckIcon, XIcon } from "../../components/HabitIcons";
-import { DayStatus, Habit, StatusMap } from "./types";
+import AnimatedProgressBar from "../../components/AnimatedProgressBar";
+import { dayCounts, usesLogs } from "../../utils/periods";
+import { DayStatus, Habit, HabitLogEntry, StatusMap } from "./types";
+import { BORDER, BORDER_DONE } from "../../theme";
+import { slideIn } from "../../components/SlideInView";
 
 const DAY_LABELS = ["M", "Tu", "W", "Th", "F", "Sa", "Su"];
 const CELL_SIZE = 34;
@@ -12,9 +16,13 @@ interface Props {
   weekDates: string[];
   habits: Habit[];
   statuses: StatusMap;
+  logs: HabitLogEntry[];
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onCellPress: (habitId: string, dayISO: string) => void;
+  // Habits with a target above 1 log several completions per day: tap adds one, hold removes the latest
+  onCellAddLog: (habitId: string, dayISO: string) => void;
+  onCellRemove: (habitId: string, dayISO: string) => void;
 }
 
 export default function WeeklyView({
@@ -22,20 +30,30 @@ export default function WeeklyView({
   weekDates,
   habits,
   statuses,
+  logs,
   onPrevWeek,
   onNextWeek,
   onCellPress,
+  onCellAddLog,
+  onCellRemove,
 }: Props) {
   const sundayISO = weekDates[6];
   const today = todayISO();
   const todayColIndex = weekDates.indexOf(today);
 
-  const totalCells = habits.length * 7;
-  const doneCells = habits.reduce(
-    (sum, h) => sum + weekDates.filter((d) => statuses[h.id]?.[d] === "DONE").length,
+  // Each habit's goal is its weekly target (e.g. 2 of 7 days), not all 7 cells.
+  // Done days are capped at the target so over-achieving one habit can't hide
+  // a shortfall in another.
+  function doneThisWeek(habitId: string): number {
+    const counts = dayCounts(habitId, logs, statuses[habitId]);
+    return weekDates.reduce((sum, d) => sum + (counts[d] ?? 0), 0);
+  }
+  const totalTarget = habits.reduce((sum, h) => sum + (h.frequencyCount ?? 1), 0);
+  const totalDone = habits.reduce(
+    (sum, h) => sum + Math.min(doneThisWeek(h.id), h.frequencyCount ?? 1),
     0,
   );
-  const weekPct = totalCells > 0 ? Math.round((doneCells / totalCells) * 100) : 0;
+  const weekPct = totalTarget > 0 ? Math.round((totalDone / totalTarget) * 100) : 0;
 
   return (
     <View style={styles.wrap}>
@@ -84,12 +102,16 @@ export default function WeeklyView({
           data={habits}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) =>
+            slideIn(index, () => {
             const target = item.frequencyCount ?? 1;
-            const count = weekDates.filter((d) => statuses[item.id]?.[d] === "DONE").length;
+            const count = doneThisWeek(item.id);
+            const counts = dayCounts(item.id, logs, statuses[item.id]);
+            const barPct = Math.min(Math.round((count / target) * 100), 100);
 
             return (
-              <View style={styles.habitCard}>
+              <View style={[styles.habitCard, count >= target && styles.cardDone]}>
+               <View style={styles.habitRow}>
                 <View style={styles.habitNameCol}>
                   <Text style={styles.habitName} numberOfLines={1}>
                     {item.name}
@@ -102,22 +124,39 @@ export default function WeeklyView({
                   {weekDates.map((dayISO, i) => {
                     const status: DayStatus = statuses[item.id]?.[dayISO] ?? "UNSET";
                     const isToday = i === todayColIndex;
+                    const multi = usesLogs(item.frequencyType, target);
+                    const dayCount = multi ? (counts[dayISO] ?? 0) : 0;
 
                     return (
                       <TouchableOpacity
                         key={dayISO}
                         style={[styles.cell, isToday && styles.cellToday]}
-                        onPress={() => onCellPress(item.id, dayISO)}
+                        onPress={() =>
+                          multi ? onCellAddLog(item.id, dayISO) : onCellPress(item.id, dayISO)
+                        }
+                        onLongPress={multi ? () => onCellRemove(item.id, dayISO) : undefined}
                       >
-                        {status === "DONE" && <CheckIcon size={30} />}
-                        {status === "MISSED" && <XIcon size={30} />}
+                        {(multi ? dayCount > 0 : status === "DONE") && <CheckIcon size={30} />}
+                        {!multi && status === "MISSED" && <XIcon size={30} />}
+                        {multi && dayCount > 1 && (
+                          <View style={styles.cellBadge}>
+                            <Text style={styles.cellBadgeText}>{dayCount}</Text>
+                          </View>
+                        )}
                       </TouchableOpacity>
                     );
                   })}
                 </View>
+               </View>
+                <AnimatedProgressBar
+                  pct={barPct}
+                  trackStyle={styles.barTrack}
+                  fillStyle={count >= target ? styles.barFillDone : styles.barFill}
+                />
               </View>
             );
-          }}
+            })
+          }
         />
       )}
     </View>
@@ -125,9 +164,13 @@ export default function WeeklyView({
 }
 
 const styles = StyleSheet.create({
+  // Outline turns light green once the habit is completed
+  cardDone: { borderColor: BORDER_DONE },
   wrap: { flex: 1 },
   dateCard: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 16,
     marginHorizontal: 16,
     marginBottom: 12,
@@ -214,16 +257,38 @@ const styles = StyleSheet.create({
   },
   habitCard: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    flexDirection: "row",
-    alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: -4, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 3,
+  },
+  habitRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  barTrack: {
+    height: 6,
+    borderRadius: 4,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    overflow: "hidden",
+    marginTop: 10,
+  },
+  barFill: {
+    height: "100%",
+    borderRadius: 4,
+    backgroundColor: "#009951",
+  },
+  // Brighter green once the weekly target is met, so "done" reads at a glance
+  barFillDone: {
+    height: "100%",
+    borderRadius: 4,
+    backgroundColor: "#98FF9D",
   },
   habitName: {
     fontSize: 13,
@@ -259,6 +324,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "rgba(152,234,255,0.08)",
+  },
+  cellBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#98eaff",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  cellBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#000603",
   },
   cellToday: {
     borderWidth: 1.5,

@@ -1,16 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
-import { MONTH_ABBR, addDays, todayISO } from "../../utils/dates";
+import { MONTH_ABBR, addDays, localDateOf, todayISO } from "../../utils/dates";
 import { CheckIcon, XIcon } from "../../components/HabitIcons";
-import { DayStatus, Habit, StatusMap } from "./types";
+import PopOnChange from "../../components/PopOnChange";
+import MultiCountHabitCard from "../../components/MultiCountHabitCard";
+import { countInPeriod, dayCounts, periodWord, usesLogs } from "../../utils/periods";
+import { DayStatus, Habit, HabitLogEntry, StatusMap } from "./types";
+import { BORDER, BORDER_DONE, BORDER_MISSED } from "../../theme";
+import { slideIn } from "../../components/SlideInView";
 
 interface Props {
   year: number;
   habits: Habit[];
   statuses: StatusMap;
+  logs: HabitLogEntry[];
   onPrevYear: () => void;
   onNextYear: () => void;
   onCheckIn: (habitId: string, dateISO: string, next: DayStatus) => void;
+  onAddLog: (habitId: string, dayISO: string) => void; // logs against the day-cursor date
+  onDeleteLog: (logId: string) => void;
 }
 
 // Defaults the log cursor to today (current year), or Dec 31 of a past year —
@@ -27,7 +35,17 @@ function formatShort(dateISO: string): string {
   return `${MONTH_ABBR[m - 1]} ${d}`;
 }
 
-export default function YearlyView({ year, habits, statuses, onPrevYear, onNextYear, onCheckIn }: Props) {
+export default function YearlyView({
+  year,
+  habits,
+  statuses,
+  logs,
+  onPrevYear,
+  onNextYear,
+  onCheckIn,
+  onAddLog,
+  onDeleteLog,
+}: Props) {
   const today = todayISO();
   const yearPrefix = `${year}-`;
   const jan1 = `${year}-01-01`;
@@ -42,6 +60,10 @@ export default function YearlyView({ year, habits, statuses, onPrevYear, onNextY
   const canLog = logDateISO <= today;
   const canGoPrev = logDateISO > jan1;
   const canGoNext = logDateISO < dec31 && addDays(logDateISO, 1) <= today;
+
+  function logsForHabitOnDate(habitId: string) {
+    return logs.filter((l) => l.habitId === habitId && localDateOf(l.loggedAt) === logDateISO);
+  }
 
   return (
     <View style={styles.wrap}>
@@ -63,7 +85,9 @@ export default function YearlyView({ year, habits, statuses, onPrevYear, onNextY
         >
           <Text style={styles.dayArrowText}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.logDayLabel}>Logging for {formatShort(logDateISO)}</Text>
+        <PopOnChange value={logDateISO} style={styles.logDayLabel}>
+          Logging for {formatShort(logDateISO)}
+        </PopOnChange>
         <TouchableOpacity
           disabled={!canGoNext}
           style={[styles.dayArrowBtn, !canGoNext && styles.dayArrowBtnDisabled]}
@@ -84,8 +108,34 @@ export default function YearlyView({ year, habits, statuses, onPrevYear, onNextY
           data={habits}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) =>
+            slideIn(index, () => {
             const target = item.frequencyCount ?? 1;
+
+            if (usesLogs(item.frequencyType, target)) {
+              const dayLogs = logsForHabitOnDate(item.id).sort((a, b) =>
+                a.loggedAt < b.loggedAt ? 1 : -1,
+              );
+              const isMissed = statuses[item.id]?.[logDateISO] === "MISSED";
+
+              return (
+                <MultiCountHabitCard
+                  name={item.name}
+                  count={countInPeriod(dayCounts(item.id, logs, statuses[item.id]), "YEARLY", logDateISO)}
+                  target={target}
+                  periodLabel={periodWord("YEARLY")}
+                  canLog={canLog}
+                  isMissed={isMissed}
+                  logs={dayLogs}
+                  onAddLog={() => onAddLog(item.id, logDateISO)}
+                  onDeleteLog={onDeleteLog}
+                  onToggleMissed={() =>
+                    onCheckIn(item.id, logDateISO, isMissed ? "UNSET" : "MISSED")
+                  }
+                />
+              );
+            }
+
             const count = Object.entries(statuses[item.id] ?? {}).filter(
               ([date, status]) => status === "DONE" && date.startsWith(yearPrefix),
             ).length;
@@ -93,7 +143,7 @@ export default function YearlyView({ year, habits, statuses, onPrevYear, onNextY
             const logDateStatus = statuses[item.id]?.[logDateISO] ?? "UNSET";
 
             return (
-              <View style={styles.card}>
+              <View style={[styles.card, logDateStatus === "MISSED" && styles.cardMissed, count >= target && styles.cardDone]}>
                 <View style={styles.cardTop}>
                   <TouchableOpacity
                     disabled={!canLog}
@@ -138,7 +188,8 @@ export default function YearlyView({ year, habits, statuses, onPrevYear, onNextY
                 )}
               </View>
             );
-          }}
+            })
+          }
         />
       )}
     </View>
@@ -146,6 +197,9 @@ export default function YearlyView({ year, habits, statuses, onPrevYear, onNextY
 }
 
 const styles = StyleSheet.create({
+  // Outline turns light green once the habit is completed
+  cardDone: { borderColor: BORDER_DONE },
+  cardMissed: { borderColor: BORDER_MISSED },
   wrap: { flex: 1 },
   navRow: {
     flexDirection: "row",
@@ -219,6 +273,8 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 16,
     padding: 16,
     shadowColor: "#000",

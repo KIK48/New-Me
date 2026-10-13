@@ -193,9 +193,12 @@ export default function WeekScreen() {
           month={monthAnchor.month}
           habits={monthlyHabits}
           statuses={statuses}
+          logs={logs}
           onPrevMonth={() => setMonthAnchor((a) => addMonths(a.year, a.month, -1))}
           onNextMonth={() => setMonthAnchor((a) => addMonths(a.year, a.month, 1))}
           onCheckIn={handleCheckIn}
+          onAddLog={handleAddLog}
+          onDeleteLog={handleDeleteLog}
         />
       )}
 
@@ -204,9 +207,12 @@ export default function WeekScreen() {
           year={yearAnchor}
           habits={yearlyHabits}
           statuses={statuses}
+          logs={logs}
           onPrevYear={() => setYearAnchor((y) => y - 1)}
           onNextYear={() => setYearAnchor((y) => y + 1)}
           onCheckIn={handleCheckIn}
+          onAddLog={handleAddLog}
+          onDeleteLog={handleDeleteLog}
         />
       )}
     </View>

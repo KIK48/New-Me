@@ -13,7 +13,7 @@ export interface Habit {
   [key: string]: any;
 }
 
-// One row per completion — only used by DAILY habits with frequencyCount > 1
+// One row per completion — used by any habit with frequencyCount > 1, across all 4 views
 export interface HabitLogEntry {
   id: string;
   habitId: string;

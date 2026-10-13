@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
-import { MONTH_ABBR, addDays, todayISO } from "../../utils/dates";
+import { MONTH_ABBR, addDays, localDateOf, todayISO } from "../../utils/dates";
 import { CheckIcon, XIcon } from "../../components/HabitIcons";
-import { DayStatus, Habit, StatusMap } from "./types";
+import PopOnChange from "../../components/PopOnChange";
+import MultiCountHabitCard from "../../components/MultiCountHabitCard";
+import { DayStatus, Habit, HabitLogEntry, StatusMap } from "./types";
 
 interface Props {
   year: number;
   habits: Habit[];
   statuses: StatusMap;
+  logs: HabitLogEntry[];
   onPrevYear: () => void;
   onNextYear: () => void;
   onCheckIn: (habitId: string, dateISO: string, next: DayStatus) => void;
+  onAddLog: (habitId: string) => void;
+  onDeleteLog: (logId: string) => void;
 }
 
 // Defaults the log cursor to today (current year), or Dec 31 of a past year —
@@ -27,7 +32,17 @@ function formatShort(dateISO: string): string {
   return `${MONTH_ABBR[m - 1]} ${d}`;
 }
 
-export default function YearlyView({ year, habits, statuses, onPrevYear, onNextYear, onCheckIn }: Props) {
+export default function YearlyView({
+  year,
+  habits,
+  statuses,
+  logs,
+  onPrevYear,
+  onNextYear,
+  onCheckIn,
+  onAddLog,
+  onDeleteLog,
+}: Props) {
   const today = todayISO();
   const yearPrefix = `${year}-`;
   const jan1 = `${year}-01-01`;
@@ -42,6 +57,10 @@ export default function YearlyView({ year, habits, statuses, onPrevYear, onNextY
   const canLog = logDateISO <= today;
   const canGoPrev = logDateISO > jan1;
   const canGoNext = logDateISO < dec31 && addDays(logDateISO, 1) <= today;
+
+  function logsForHabitOnDate(habitId: string) {
+    return logs.filter((l) => l.habitId === habitId && localDateOf(l.loggedAt) === logDateISO);
+  }
 
   return (
     <View style={styles.wrap}>
@@ -63,7 +82,9 @@ export default function YearlyView({ year, habits, statuses, onPrevYear, onNextY
         >
           <Text style={styles.dayArrowText}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.logDayLabel}>Logging for {formatShort(logDateISO)}</Text>
+        <PopOnChange value={logDateISO} style={styles.logDayLabel}>
+          Logging for {formatShort(logDateISO)}
+        </PopOnChange>
         <TouchableOpacity
           disabled={!canGoNext}
           style={[styles.dayArrowBtn, !canGoNext && styles.dayArrowBtnDisabled]}
@@ -86,6 +107,30 @@ export default function YearlyView({ year, habits, statuses, onPrevYear, onNextY
           contentContainerStyle={styles.list}
           renderItem={({ item }) => {
             const target = item.frequencyCount ?? 1;
+
+            if (target > 1) {
+              const dayLogs = logsForHabitOnDate(item.id).sort((a, b) =>
+                a.loggedAt < b.loggedAt ? 1 : -1,
+              );
+              const isMissed = statuses[item.id]?.[logDateISO] === "MISSED";
+
+              return (
+                <MultiCountHabitCard
+                  name={item.name}
+                  count={dayLogs.length}
+                  target={target}
+                  canLog={canLog}
+                  isMissed={isMissed}
+                  logs={dayLogs}
+                  onAddLog={() => onAddLog(item.id)}
+                  onDeleteLog={onDeleteLog}
+                  onToggleMissed={() =>
+                    onCheckIn(item.id, logDateISO, isMissed ? "UNSET" : "MISSED")
+                  }
+                />
+              );
+            }
+
             const count = Object.entries(statuses[item.id] ?? {}).filter(
               ([date, status]) => status === "DONE" && date.startsWith(yearPrefix),
             ).length;

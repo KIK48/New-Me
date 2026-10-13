@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Animated,
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import React, { useState, useEffect } from "react";
@@ -15,12 +16,20 @@ import { AppStack } from "../navigation/types";
 import { API_URL } from "../api/client";
 import { todayISO } from "../utils/dates";
 import { CheckIcon, XIcon } from "../components/HabitIcons";
+import AnimatedProgressBar from "../components/AnimatedProgressBar";
+import MultiCountHabitCard from "../components/MultiCountHabitCard";
+import { localDateOf } from "../utils/dates";
 
 // HabitsScreen lives inside the tab navigator, but CreateHabit/EditHabit
 // are on the parent AppStack — useNavigation gives access to the full stack
 type Nav = NativeStackNavigationProp<AppStack>;
 type DayStatus = "UNSET" | "DONE" | "MISSED";
 type Mode = "+" | "-" | null;
+interface HabitLogEntry {
+  id: string;
+  habitId: string;
+  loggedAt: string;
+}
 
 
 export default function HabitsScreen() {
@@ -28,6 +37,23 @@ export default function HabitsScreen() {
   const navigation = useNavigation<Nav>();
   const [habits, setHabits] = useState<any[]>([]);
   const [todayStatuses, setTodayStatuses] = useState<Record<string, DayStatus>>({});
+  const [logs, setLogs] = useState<HabitLogEntry[]>([]);
+
+  // One persistent Animated.Value per habit card, keyed by id, so the scale
+  // bounce survives re-renders (status toggles) instead of resetting mid-animation.
+  const cardScales = React.useRef<Record<string, Animated.Value>>({}).current;
+  function getCardScale(id: string) {
+    if (!cardScales[id]) cardScales[id] = new Animated.Value(1);
+    return cardScales[id];
+  }
+  function bounceCard(id: string, toValue: number) {
+    Animated.spring(getCardScale(id), {
+      toValue,
+      useNativeDriver: true,
+      speed: 40,
+      bounciness: 8,
+    }).start();
+  }
   // +/- mode: tap a habit card to mark done (+) or undo (-)
   const [mode, setMode] = useState<Mode>(null);
 
@@ -43,8 +69,9 @@ export default function HabitsScreen() {
     Promise.all([
       authorizedFetch(`${API_URL}/habits`).then((r) => r.json()),
       authorizedFetch(`${API_URL}/habit-days`).then((r) => r.json()),
+      authorizedFetch(`${API_URL}/habit-logs`).then((r) => r.json()),
     ])
-      .then(([habitsData, daysData]) => {
+      .then(([habitsData, daysData, logsData]) => {
         setHabits(Array.isArray(habitsData) ? habitsData : []);
 
         // Build a map of habitId -> status for today only
@@ -57,9 +84,48 @@ export default function HabitsScreen() {
             });
         }
         setTodayStatuses(map);
+        setLogs(Array.isArray(logsData) ? logsData : []);
       })
       .catch((err) => console.log("fetch error:", err));
   }, [token, isFocused]);
+
+  function logsForHabitToday(habitId: string) {
+    const today = todayISO();
+    return logs.filter((l) => l.habitId === habitId && localDateOf(l.loggedAt) === today);
+  }
+
+  async function addLog(habitId: string) {
+    const tempId = `temp-${Date.now()}`;
+    const optimisticLog: HabitLogEntry = { id: tempId, habitId, loggedAt: new Date().toISOString() };
+    setLogs((prev) => [optimisticLog, ...prev]);
+
+    try {
+      const res = await authorizedFetch(`${API_URL}/habit-logs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ habitId }),
+      });
+      if (!res.ok) throw new Error("Failed to log");
+      const saved = await res.json();
+      setLogs((prev) => prev.map((l) => (l.id === tempId ? saved : l)));
+    } catch {
+      setLogs((prev) => prev.filter((l) => l.id !== tempId));
+      Alert.alert("Error", "Failed to save — try again");
+    }
+  }
+
+  async function deleteLog(logId: string) {
+    const removed = logs.find((l) => l.id === logId);
+    setLogs((prev) => prev.filter((l) => l.id !== logId));
+
+    try {
+      const res = await authorizedFetch(`${API_URL}/habit-logs/${logId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+    } catch {
+      if (removed) setLogs((prev) => [removed, ...prev]);
+      Alert.alert("Error", "Failed to undo — try again");
+    }
+  }
 
   async function updateStatus(habitId: string, next: DayStatus) {
     const current = todayStatuses[habitId] ?? "UNSET";
@@ -130,8 +196,17 @@ export default function HabitsScreen() {
     setMode((prev) => (prev === next ? null : next));
   }
 
-  const done = habits.filter((h) => todayStatuses[h.id] === "DONE").length;
-  const pct = habits.length > 0 ? Math.round((done / habits.length) * 100) : 0;
+  // A multi-count habit (target > 1) contributes partial credit — e.g. 1 of 2
+  // logs is worth 0.5 of a habit — instead of only counting once fully done.
+  function completionFraction(h: any): number {
+    const target = h.frequencyCount ?? 1;
+    if (target > 1) return Math.min(logsForHabitToday(h.id).length / target, 1);
+    return todayStatuses[h.id] === "DONE" ? 1 : 0;
+  }
+
+  const fractionalDone = habits.reduce((sum, h) => sum + completionFraction(h), 0);
+  const pct = habits.length > 0 ? Math.round((fractionalDone / habits.length) * 100) : 0;
+  const done = habits.filter((h) => completionFraction(h) >= 1).length;
   const todayLabel = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -170,9 +245,11 @@ export default function HabitsScreen() {
       <View style={styles.progressCard}>
         <Text style={styles.progressDate}>{todayLabel}</Text>
         <View style={styles.progressRow}>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${pct}%` as any }]} />
-          </View>
+          <AnimatedProgressBar
+            pct={pct}
+            trackStyle={styles.progressTrack}
+            fillStyle={styles.progressFill}
+          />
           <Text style={styles.progressCount}>
             {done}/{habits.length}
           </Text>
@@ -194,6 +271,37 @@ export default function HabitsScreen() {
           </TouchableOpacity>
         }
         renderItem={({ item }) => {
+          const target = item.frequencyCount ?? 1;
+
+          if (target > 1) {
+            const dayLogs = logsForHabitToday(item.id).sort((a, b) =>
+              a.loggedAt < b.loggedAt ? 1 : -1,
+            );
+            const isMissed = todayStatuses[item.id] === "MISSED";
+
+            return (
+              <Swipeable
+                renderRightActions={() => (
+                  <TouchableOpacity style={swipeDeleteBtn} onPress={() => handleDelete(item.id)}>
+                    <Text style={swipeDeleteText}>Delete</Text>
+                  </TouchableOpacity>
+                )}
+              >
+                <MultiCountHabitCard
+                  name={item.name}
+                  count={dayLogs.length}
+                  target={target}
+                  canLog
+                  isMissed={isMissed}
+                  logs={dayLogs}
+                  onAddLog={() => addLog(item.id)}
+                  onDeleteLog={deleteLog}
+                  onToggleMissed={() => updateStatus(item.id, isMissed ? "UNSET" : "MISSED")}
+                />
+              </Swipeable>
+            );
+          }
+
           const status = todayStatuses[item.id] ?? "UNSET";
           const nameColor =
             status === "DONE"
@@ -223,68 +331,74 @@ export default function HabitsScreen() {
                 </TouchableOpacity>
               )}
             >
-              <TouchableOpacity
-                style={styles.habitCard}
-                onPress={() => handleCardPress(item.id)}
-                activeOpacity={mode ? 0.6 : 1}
+              <Animated.View
+                style={{ transform: [{ scale: getCardScale(item.id) }] }}
               >
-                <View
-                  style={[
-                    styles.statusIcon,
-                    status === "DONE" && styles.statusIconDone,
-                    status === "MISSED" && styles.statusIconMissed,
-                  ]}
-                >
-                  {status === "DONE" && <CheckIcon size={40} />}
-                  {status === "MISSED" && <XIcon size={40} />}
-                </View>
                 <TouchableOpacity
-                  style={styles.habitInfo}
-                  onPress={() =>
-                    mode
-                      ? handleCardPress(item.id)
-                      : navigation.navigate("HabitDetail", {
-                          id: item.id,
-                          name: item.name,
-                          notes: item.notes,
-                          frequency: {
-                            type: item.frequencyType ?? "DAILY",
-                            count: item.frequencyCount ?? 1,
-                          },
-                        })
-                  }
+                  style={styles.habitCard}
+                  onPress={() => handleCardPress(item.id)}
+                  onPressIn={() => bounceCard(item.id, 0.97)}
+                  onPressOut={() => bounceCard(item.id, 1)}
+                  activeOpacity={mode ? 0.6 : 1}
                 >
-                  <Text
+                  <View
                     style={[
-                      styles.habitName,
-                      {
-                        color: nameColor,
-                        textDecorationLine:
-                          status === "MISSED" ? "line-through" : "none",
-                      },
+                      styles.statusIcon,
+                      status === "DONE" && styles.statusIconDone,
+                      status === "MISSED" && styles.statusIconMissed,
                     ]}
                   >
-                    {item.name}
-                  </Text>
-                  <Text style={styles.habitSub}>{subtext}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.missedBtn,
-                    status === "MISSED" && styles.missedBtnActive,
-                  ]}
-                  onPress={() => handleToggleMissed(item.id)}
-                >
-                  <Text
-                    style={[
-                      styles.missedBtnText,
-                      status === "MISSED" && styles.missedBtnTextActive,
-                    ]}
+                    {status === "DONE" && <CheckIcon size={40} />}
+                    {status === "MISSED" && <XIcon size={40} />}
+                  </View>
+                  <TouchableOpacity
+                    style={styles.habitInfo}
+                    onPress={() =>
+                      mode
+                        ? handleCardPress(item.id)
+                        : navigation.navigate("HabitDetail", {
+                            id: item.id,
+                            name: item.name,
+                            notes: item.notes,
+                            frequency: {
+                              type: item.frequencyType ?? "DAILY",
+                              count: item.frequencyCount ?? 1,
+                            },
+                          })
+                    }
                   >
-                    {status === "MISSED" ? "Undo" : "Missed"}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.habitName,
+                        {
+                          color: nameColor,
+                          textDecorationLine:
+                            status === "MISSED" ? "line-through" : "none",
+                        },
+                      ]}
+                    >
+                      {item.name}
+                    </Text>
+                    <Text style={styles.habitSub}>{subtext}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.missedBtn,
+                      status === "MISSED" && styles.missedBtnActive,
+                    ]}
+                    onPress={() => handleToggleMissed(item.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.missedBtnText,
+                        status === "MISSED" && styles.missedBtnTextActive,
+                      ]}
+                    >
+                      {status === "MISSED" ? "Undo" : "Missed"}
+                    </Text>
+                  </TouchableOpacity>
                 </TouchableOpacity>
-              </TouchableOpacity>
+              </Animated.View>
             </Swipeable>
           );
         }}

@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
-import { MONTH_ABBR, MONTH_LABELS, daysInMonth, todayISO } from "../../utils/dates";
+import { MONTH_ABBR, MONTH_LABELS, daysInMonth, localDateOf, todayISO } from "../../utils/dates";
 import { CheckIcon, XIcon } from "../../components/HabitIcons";
-import { DayStatus, Habit, StatusMap } from "./types";
+import PopOnChange from "../../components/PopOnChange";
+import MultiCountHabitCard from "../../components/MultiCountHabitCard";
+import { DayStatus, Habit, HabitLogEntry, StatusMap } from "./types";
 
 interface Props {
   year: number;
   month: number; // 1-indexed
   habits: Habit[];
   statuses: StatusMap;
+  logs: HabitLogEntry[];
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onCheckIn: (habitId: string, dateISO: string, next: DayStatus) => void;
+  onAddLog: (habitId: string) => void;
+  onDeleteLog: (logId: string) => void;
 }
 
 // Defaults the log cursor to today (current month), or the last day of a past month —
@@ -28,9 +33,12 @@ export default function MonthlyView({
   month,
   habits,
   statuses,
+  logs,
   onPrevMonth,
   onNextMonth,
   onCheckIn,
+  onAddLog,
+  onDeleteLog,
 }: Props) {
   const today = todayISO();
   const monthPrefix = `${year}-${String(month).padStart(2, "0")}-`;
@@ -45,6 +53,10 @@ export default function MonthlyView({
   const logDateISO = `${monthPrefix}${String(logDay).padStart(2, "0")}`;
   const canLog = logDateISO <= today;
   const canGoNext = logDay < monthLength && `${monthPrefix}${String(logDay + 1).padStart(2, "0")}` <= today;
+
+  function logsForHabitOnDate(habitId: string) {
+    return logs.filter((l) => l.habitId === habitId && localDateOf(l.loggedAt) === logDateISO);
+  }
 
   return (
     <View style={styles.wrap}>
@@ -68,9 +80,9 @@ export default function MonthlyView({
         >
           <Text style={styles.dayArrowText}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.logDayLabel}>
+        <PopOnChange value={logDateISO} style={styles.logDayLabel}>
           Logging for {MONTH_ABBR[month - 1]} {logDay}
-        </Text>
+        </PopOnChange>
         <TouchableOpacity
           disabled={!canGoNext}
           style={[styles.dayArrowBtn, !canGoNext && styles.dayArrowBtnDisabled]}
@@ -93,6 +105,30 @@ export default function MonthlyView({
           contentContainerStyle={styles.list}
           renderItem={({ item }) => {
             const target = item.frequencyCount ?? 1;
+
+            if (target > 1) {
+              const dayLogs = logsForHabitOnDate(item.id).sort((a, b) =>
+                a.loggedAt < b.loggedAt ? 1 : -1,
+              );
+              const isMissed = statuses[item.id]?.[logDateISO] === "MISSED";
+
+              return (
+                <MultiCountHabitCard
+                  name={item.name}
+                  count={dayLogs.length}
+                  target={target}
+                  canLog={canLog}
+                  isMissed={isMissed}
+                  logs={dayLogs}
+                  onAddLog={() => onAddLog(item.id)}
+                  onDeleteLog={onDeleteLog}
+                  onToggleMissed={() =>
+                    onCheckIn(item.id, logDateISO, isMissed ? "UNSET" : "MISSED")
+                  }
+                />
+              );
+            }
+
             const count = Object.entries(statuses[item.id] ?? {}).filter(
               ([date, status]) => status === "DONE" && date.startsWith(monthPrefix),
             ).length;

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Animated,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { AppStack, FrequencyType } from "../navigation/types";
@@ -39,6 +40,17 @@ export default function CreateHabitScreen({ navigation }: Props) {
   const [freqType, setFreqType] = useState<FrequencyType>("DAILY");
   const [freqCount, setFreqCount] = useState(1);
   const [loading, setLoading] = useState(false);
+
+  // Sheet already slides up via the navigator's transparentModal transition;
+  // this adds a settle-in spring on the card itself so it doesn't feel abrupt.
+  const cardOffset = useRef(new Animated.Value(24)).current;
+  const cardOpacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(cardOffset, { toValue: 0, useNativeDriver: true, speed: 14, bounciness: 6 }),
+      Animated.timing(cardOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
+  }, []);
 
   async function handleSave() {
     if (!name.trim()) return;
@@ -75,7 +87,12 @@ export default function CreateHabitScreen({ navigation }: Props) {
       />
 
       {/* Card */}
-      <View style={styles.card}>
+      <Animated.View
+        style={[
+          styles.card,
+          { opacity: cardOpacity, transform: [{ translateY: cardOffset }] },
+        ]}
+      >
         {/* Drag handle */}
         <View style={styles.handle} />
 
@@ -150,7 +167,7 @@ export default function CreateHabitScreen({ navigation }: Props) {
         >
           <Text style={styles.cancelBtnText}>Cancel</Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     </KeyboardAvoidingView>
   );
 }

@@ -5,6 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -42,6 +43,7 @@ export default function ProfileScreen() {
     [token],
   );
   const avatarLetter = email ? email[0].toUpperCase() : "?";
+  const [deleting, setDeleting] = useState(false);
 
   const isFocused = useIsFocused();
 
@@ -103,6 +105,33 @@ export default function ProfileScreen() {
     { streak: 0, name: "" },
   );
 
+  // Play/App Store policy requires an in-app way to delete an account, not
+  // just uninstalling. Confirmed destructively since it's irreversible —
+  // the API cascades the delete through habits, days, logs, and tokens.
+  function confirmDeleteAccount() {
+    Alert.alert(
+      "Delete account",
+      "This permanently deletes your account and all your habit data. This can't be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: deleteAccount },
+      ],
+    );
+  }
+
+  async function deleteAccount() {
+    setDeleting(true);
+    try {
+      const res = await authorizedFetch(`${API_URL}/auth/account`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      await logout();
+    } catch {
+      Alert.alert("Something went wrong", "Couldn't delete your account. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const stats = [
     { label: "This week", value: `${weekPct}%`,                  sub: "completion" },
     { label: "Habits",    value: `${habits.length}`,             sub: "tracked" },
@@ -127,8 +156,10 @@ export default function ProfileScreen() {
           <View style={styles.avatar}>
             <Text style={styles.avatarLetter}>{avatarLetter}</Text>
           </View>
-          <View>
-            <Text style={styles.emailText}>{email || "—"}</Text>
+          <View style={styles.profileTextCol}>
+            <Text style={styles.emailText} numberOfLines={1} ellipsizeMode="tail">
+              {email || "—"}
+            </Text>
             <Text style={styles.memberText}>New Me member</Text>
           </View>
         </View>
@@ -196,6 +227,17 @@ export default function ProfileScreen() {
         <TouchableOpacity style={styles.signOutBtn} onPress={logout}>
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
+
+        {/* Delete account */}
+        <TouchableOpacity
+          style={styles.deleteBtn}
+          onPress={confirmDeleteAccount}
+          disabled={deleting}
+        >
+          <Text style={styles.deleteText}>
+            {deleting ? "Deleting…" : "Delete Account"}
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -254,6 +296,10 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "600",
     color: "#98FF9D",
+  },
+  profileTextCol: {
+    flex: 1,
+    minWidth: 0, // lets emailText's numberOfLines truncation actually kick in instead of overflowing the row
   },
   emailText: {
     fontSize: 16,
@@ -377,6 +423,19 @@ const styles = StyleSheet.create({
   },
   signOutText: {
     color: "#98eaff",
+    fontSize: 14,
+  },
+  deleteBtn: {
+    alignSelf: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(134,0,0,0.4)",
+    marginTop: 4,
+  },
+  deleteText: {
+    color: "#860000",
     fontSize: 14,
   },
 });

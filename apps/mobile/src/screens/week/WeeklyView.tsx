@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
 import { formatDate, todayISO } from "../../utils/dates";
 import { CheckIcon, XIcon } from "../../components/HabitIcons";
+import AnimatedProgressBar from "../../components/AnimatedProgressBar";
 import { DayStatus, Habit, StatusMap } from "./types";
 
 const DAY_LABELS = ["M", "Tu", "W", "Th", "F", "Sa", "Su"];
@@ -30,12 +31,18 @@ export default function WeeklyView({
   const today = todayISO();
   const todayColIndex = weekDates.indexOf(today);
 
-  const totalCells = habits.length * 7;
-  const doneCells = habits.reduce(
-    (sum, h) => sum + weekDates.filter((d) => statuses[h.id]?.[d] === "DONE").length,
+  // Each habit's goal is its weekly target (e.g. 2 of 7 days), not all 7 cells.
+  // Done days are capped at the target so over-achieving one habit can't hide
+  // a shortfall in another.
+  function doneThisWeek(habitId: string): number {
+    return weekDates.filter((d) => statuses[habitId]?.[d] === "DONE").length;
+  }
+  const totalTarget = habits.reduce((sum, h) => sum + (h.frequencyCount ?? 1), 0);
+  const totalDone = habits.reduce(
+    (sum, h) => sum + Math.min(doneThisWeek(h.id), h.frequencyCount ?? 1),
     0,
   );
-  const weekPct = totalCells > 0 ? Math.round((doneCells / totalCells) * 100) : 0;
+  const weekPct = totalTarget > 0 ? Math.round((totalDone / totalTarget) * 100) : 0;
 
   return (
     <View style={styles.wrap}>
@@ -86,10 +93,12 @@ export default function WeeklyView({
           contentContainerStyle={styles.list}
           renderItem={({ item }) => {
             const target = item.frequencyCount ?? 1;
-            const count = weekDates.filter((d) => statuses[item.id]?.[d] === "DONE").length;
+            const count = doneThisWeek(item.id);
+            const barPct = Math.min(Math.round((count / target) * 100), 100);
 
             return (
               <View style={styles.habitCard}>
+               <View style={styles.habitRow}>
                 <View style={styles.habitNameCol}>
                   <Text style={styles.habitName} numberOfLines={1}>
                     {item.name}
@@ -115,6 +124,12 @@ export default function WeeklyView({
                     );
                   })}
                 </View>
+               </View>
+                <AnimatedProgressBar
+                  pct={barPct}
+                  trackStyle={styles.barTrack}
+                  fillStyle={count >= target ? styles.barFillDone : styles.barFill}
+                />
               </View>
             );
           }}
@@ -217,13 +232,33 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    flexDirection: "row",
-    alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: -4, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 3,
+  },
+  habitRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  barTrack: {
+    height: 6,
+    borderRadius: 4,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    overflow: "hidden",
+    marginTop: 10,
+  },
+  barFill: {
+    height: "100%",
+    borderRadius: 4,
+    backgroundColor: "#009951",
+  },
+  // Brighter green once the weekly target is met, so "done" reads at a glance
+  barFillDone: {
+    height: "100%",
+    borderRadius: 4,
+    backgroundColor: "#98FF9D",
   },
   habitName: {
     fontSize: 13,

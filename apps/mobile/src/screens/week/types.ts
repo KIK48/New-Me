@@ -13,7 +13,8 @@ export interface Habit {
   [key: string]: any;
 }
 
-// One row per completion — used by any habit with frequencyCount > 1, across all 4 views
+// One row per completion — used by any habit with frequencyCount > 1, of any frequency type.
+// Home and every Calendar view count them through utils/periods.ts so they always agree.
 export interface HabitLogEntry {
   id: string;
   habitId: string;

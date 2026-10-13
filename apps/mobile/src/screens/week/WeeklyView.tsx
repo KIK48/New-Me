@@ -3,7 +3,8 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native
 import { formatDate, todayISO } from "../../utils/dates";
 import { CheckIcon, XIcon } from "../../components/HabitIcons";
 import AnimatedProgressBar from "../../components/AnimatedProgressBar";
-import { DayStatus, Habit, StatusMap } from "./types";
+import { dayCounts, usesLogs } from "../../utils/periods";
+import { DayStatus, Habit, HabitLogEntry, StatusMap } from "./types";
 
 const DAY_LABELS = ["M", "Tu", "W", "Th", "F", "Sa", "Su"];
 const CELL_SIZE = 34;
@@ -13,9 +14,13 @@ interface Props {
   weekDates: string[];
   habits: Habit[];
   statuses: StatusMap;
+  logs: HabitLogEntry[];
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onCellPress: (habitId: string, dayISO: string) => void;
+  // Habits with a target above 1 log several completions per day: tap adds one, hold removes the latest
+  onCellAddLog: (habitId: string, dayISO: string) => void;
+  onCellRemove: (habitId: string, dayISO: string) => void;
 }
 
 export default function WeeklyView({
@@ -23,9 +28,12 @@ export default function WeeklyView({
   weekDates,
   habits,
   statuses,
+  logs,
   onPrevWeek,
   onNextWeek,
   onCellPress,
+  onCellAddLog,
+  onCellRemove,
 }: Props) {
   const sundayISO = weekDates[6];
   const today = todayISO();
@@ -35,7 +43,8 @@ export default function WeeklyView({
   // Done days are capped at the target so over-achieving one habit can't hide
   // a shortfall in another.
   function doneThisWeek(habitId: string): number {
-    return weekDates.filter((d) => statuses[habitId]?.[d] === "DONE").length;
+    const counts = dayCounts(habitId, logs, statuses[habitId]);
+    return weekDates.reduce((sum, d) => sum + (counts[d] ?? 0), 0);
   }
   const totalTarget = habits.reduce((sum, h) => sum + (h.frequencyCount ?? 1), 0);
   const totalDone = habits.reduce(
@@ -94,6 +103,7 @@ export default function WeeklyView({
           renderItem={({ item }) => {
             const target = item.frequencyCount ?? 1;
             const count = doneThisWeek(item.id);
+            const counts = dayCounts(item.id, logs, statuses[item.id]);
             const barPct = Math.min(Math.round((count / target) * 100), 100);
 
             return (
@@ -111,15 +121,25 @@ export default function WeeklyView({
                   {weekDates.map((dayISO, i) => {
                     const status: DayStatus = statuses[item.id]?.[dayISO] ?? "UNSET";
                     const isToday = i === todayColIndex;
+                    const multi = usesLogs(item.frequencyType, target);
+                    const dayCount = multi ? (counts[dayISO] ?? 0) : 0;
 
                     return (
                       <TouchableOpacity
                         key={dayISO}
                         style={[styles.cell, isToday && styles.cellToday]}
-                        onPress={() => onCellPress(item.id, dayISO)}
+                        onPress={() =>
+                          multi ? onCellAddLog(item.id, dayISO) : onCellPress(item.id, dayISO)
+                        }
+                        onLongPress={multi ? () => onCellRemove(item.id, dayISO) : undefined}
                       >
-                        {status === "DONE" && <CheckIcon size={30} />}
-                        {status === "MISSED" && <XIcon size={30} />}
+                        {(multi ? dayCount > 0 : status === "DONE") && <CheckIcon size={30} />}
+                        {!multi && status === "MISSED" && <XIcon size={30} />}
+                        {multi && dayCount > 1 && (
+                          <View style={styles.cellBadge}>
+                            <Text style={styles.cellBadgeText}>{dayCount}</Text>
+                          </View>
+                        )}
                       </TouchableOpacity>
                     );
                   })}
@@ -294,6 +314,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "rgba(152,234,255,0.08)",
+  },
+  cellBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#98eaff",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  cellBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#000603",
   },
   cellToday: {
     borderWidth: 1.5,

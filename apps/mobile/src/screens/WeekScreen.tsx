@@ -3,7 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
 import { API_URL } from "../api/client";
-import { addDays, addMonths, buildWeekDates, getMondayISO, todayISO } from "../utils/dates";
+import { addDays, addMonths, buildWeekDates, getMondayISO, localDateOf, todayISO } from "../utils/dates";
+import { loggedAtFor } from "../utils/periods";
 import DailyView from "./week/DailyView";
 import WeeklyView from "./week/WeeklyView";
 import MonthlyView from "./week/MonthlyView";
@@ -98,16 +99,19 @@ export default function WeekScreen() {
 
   // For DAILY habits with frequencyCount > 1 (e.g. "eat 2x/day") — each tap adds
   // one timestamped completion instead of toggling a single day-level status.
-  async function handleAddLog(habitId: string) {
+  // dayISO lets Month/Year/Week log against the date being viewed (not just "now").
+  async function handleAddLog(habitId: string, dayISO?: string) {
+    if (dayISO && dayISO > todayISO()) return; // can't log the future
+    const loggedAt = loggedAtFor(dayISO, todayISO());
     const tempId = `temp-${Date.now()}`;
-    const optimisticLog: HabitLogEntry = { id: tempId, habitId, loggedAt: new Date().toISOString() };
+    const optimisticLog: HabitLogEntry = { id: tempId, habitId, loggedAt };
     setLogs((prev) => [optimisticLog, ...prev]);
 
     try {
       const res = await authorizedFetch(`${API_URL}/habit-logs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ habitId }),
+        body: JSON.stringify({ habitId, loggedAt }),
       });
       if (!res.ok) throw new Error("Failed to log");
       const saved = await res.json();
@@ -131,6 +135,16 @@ export default function WeekScreen() {
       if (removed) setLogs((prev) => [removed, ...prev]);
       Alert.alert("Error", "Failed to undo — try again");
     }
+  }
+
+  // Week grid, habits with a target above 1: hold a day to undo its latest
+  // completion (a log, or a legacy DONE checkmark that has no log behind it).
+  function handleRemoveOnDay(habitId: string, dayISO: string) {
+    const latest = logs
+      .filter((l) => l.habitId === habitId && localDateOf(l.loggedAt) === dayISO)
+      .sort((a, b) => (a.loggedAt < b.loggedAt ? 1 : -1))[0];
+    if (latest) handleDeleteLog(latest.id);
+    else if (statuses[habitId]?.[dayISO] === "DONE") handleCheckIn(habitId, dayISO, "UNSET");
   }
 
   // Each view only shows habits whose rule actually lives in that scope —
@@ -181,9 +195,12 @@ export default function WeekScreen() {
           weekDates={buildWeekDates(mondayISO)}
           habits={weeklyHabits}
           statuses={statuses}
+          logs={logs}
           onPrevWeek={() => setMondayISO((d) => addDays(d, -7))}
           onNextWeek={() => setMondayISO((d) => addDays(d, 7))}
           onCellPress={handleWeeklyCellPress}
+          onCellAddLog={handleAddLog}
+          onCellRemove={handleRemoveOnDay}
         />
       )}
 

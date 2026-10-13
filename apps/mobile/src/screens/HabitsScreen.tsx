@@ -19,6 +19,7 @@ import { CheckIcon, XIcon } from "../components/HabitIcons";
 import AnimatedProgressBar from "../components/AnimatedProgressBar";
 import MultiCountHabitCard from "../components/MultiCountHabitCard";
 import { localDateOf } from "../utils/dates";
+import { countInPeriod, dayCounts, periodWord, usesLogs } from "../utils/periods";
 
 // HabitsScreen lives inside the tab navigator, but CreateHabit/EditHabit
 // are on the parent AppStack — useNavigation gives access to the full stack
@@ -36,8 +37,15 @@ export default function HabitsScreen() {
   const { token, authorizedFetch } = useAuth();
   const navigation = useNavigation<Nav>();
   const [habits, setHabits] = useState<any[]>([]);
-  const [todayStatuses, setTodayStatuses] = useState<Record<string, DayStatus>>({});
+  // Full history (habitId -> date -> status), not just today: weekly/monthly/yearly
+  // habits need their whole period to show "1/2 this week", and it keeps Home
+  // reading the same HabitDay data the Calendar writes.
+  const [allStatuses, setAllStatuses] = useState<Record<string, Record<string, DayStatus>>>({});
   const [logs, setLogs] = useState<HabitLogEntry[]>([]);
+  const todayStatuses: Record<string, DayStatus> = {};
+  Object.keys(allStatuses).forEach((id) => {
+    todayStatuses[id] = allStatuses[id]?.[todayISO()] ?? "UNSET";
+  });
 
   // One persistent Animated.Value per habit card, keyed by id, so the scale
   // bounce survives re-renders (status toggles) instead of resetting mid-animation.
@@ -64,8 +72,6 @@ export default function HabitsScreen() {
   // the screen is already focused when the token loads from SecureStore.
   useEffect(() => {
     if (!token || !isFocused) return;
-    const today = todayISO();
-
     Promise.all([
       authorizedFetch(`${API_URL}/habits`).then((r) => r.json()),
       authorizedFetch(`${API_URL}/habit-days`).then((r) => r.json()),
@@ -74,20 +80,25 @@ export default function HabitsScreen() {
       .then(([habitsData, daysData, logsData]) => {
         setHabits(Array.isArray(habitsData) ? habitsData : []);
 
-        // Build a map of habitId -> status for today only
-        const map: Record<string, DayStatus> = {};
+        const map: Record<string, Record<string, DayStatus>> = {};
         if (Array.isArray(daysData)) {
-          daysData
-            .filter((d: any) => d.date?.startsWith(today))
-            .forEach((d: any) => {
-              map[d.habitId] = d.status as DayStatus;
-            });
+          daysData.forEach((d: any) => {
+            const dayStr = d.date?.split("T")[0];
+            if (!map[d.habitId]) map[d.habitId] = {};
+            map[d.habitId][dayStr] = d.status as DayStatus;
+          });
         }
-        setTodayStatuses(map);
+        setAllStatuses(map);
         setLogs(Array.isArray(logsData) ? logsData : []);
       })
       .catch((err) => console.log("fetch error:", err));
   }, [token, isFocused]);
+
+  // Completions in the habit's current period (today / this week / month / year),
+  // counting both logs and legacy checkmarks — the same number the Calendar shows.
+  function periodCount(h: any): number {
+    return countInPeriod(dayCounts(h.id, logs, allStatuses[h.id]), h.frequencyType, todayISO());
+  }
 
   function logsForHabitToday(habitId: string) {
     const today = todayISO();
@@ -131,8 +142,11 @@ export default function HabitsScreen() {
     const current = todayStatuses[habitId] ?? "UNSET";
     const today = todayISO();
 
+    const setToday = (status: DayStatus) =>
+      setAllStatuses((prev) => ({ ...prev, [habitId]: { ...(prev[habitId] ?? {}), [today]: status } }));
+
     // Optimistic update
-    setTodayStatuses((prev) => ({ ...prev, [habitId]: next }));
+    setToday(next);
 
     try {
       const res = await authorizedFetch(`${API_URL}/habit-days`, {
@@ -141,11 +155,11 @@ export default function HabitsScreen() {
         body: JSON.stringify({ habitId, date: today, status: next }),
       });
       if (!res.ok) {
-        setTodayStatuses((prev) => ({ ...prev, [habitId]: current }));
+        setToday(current);
         Alert.alert("Error", "Failed to save check-in");
       }
     } catch {
-      setTodayStatuses((prev) => ({ ...prev, [habitId]: current }));
+      setToday(current);
       Alert.alert("Error", "Network error — try again");
     }
   }
@@ -200,8 +214,9 @@ export default function HabitsScreen() {
   // logs is worth 0.5 of a habit — instead of only counting once fully done.
   function completionFraction(h: any): number {
     const target = h.frequencyCount ?? 1;
-    if (target > 1) return Math.min(logsForHabitToday(h.id).length / target, 1);
-    return todayStatuses[h.id] === "DONE" ? 1 : 0;
+    // Judged on the habit's whole period ("1/2 this week"), the same count the
+    // Calendar shows, so both screens always agree.
+    return Math.min(periodCount(h) / target, 1);
   }
 
   const fractionalDone = habits.reduce((sum, h) => sum + completionFraction(h), 0);
@@ -273,7 +288,7 @@ export default function HabitsScreen() {
         renderItem={({ item }) => {
           const target = item.frequencyCount ?? 1;
 
-          if (target > 1) {
+          if (usesLogs(item.frequencyType, target)) {
             const dayLogs = logsForHabitToday(item.id).sort((a, b) =>
               a.loggedAt < b.loggedAt ? 1 : -1,
             );
@@ -289,8 +304,9 @@ export default function HabitsScreen() {
               >
                 <MultiCountHabitCard
                   name={item.name}
-                  count={dayLogs.length}
+                  count={periodCount(item)}
                   target={target}
+                  periodLabel={(item.frequencyType ?? "DAILY") !== "DAILY" ? periodWord(item.frequencyType) : undefined}
                   canLog
                   isMissed={isMissed}
                   logs={dayLogs}
@@ -309,7 +325,9 @@ export default function HabitsScreen() {
               : status === "MISSED"
                 ? "#ff5555"
                 : "#98eaff";
-          const subtext =
+          const isPeriodHabit = (item.frequencyType ?? "DAILY") !== "DAILY";
+          const periodDone = isPeriodHabit ? periodCount(item) : 0;
+          const baseSubtext =
             mode === "+"
               ? "Tap to mark done"
               : mode === "-"
@@ -319,6 +337,10 @@ export default function HabitsScreen() {
                   : status === "MISSED"
                     ? "Missed"
                     : "Tap to mark done";
+          // e.g. "Completed · 1/2 this week" so the period progress is visible on Home
+          const subtext = isPeriodHabit
+            ? `${baseSubtext} · ${periodDone}/${target} ${periodWord(item.frequencyType)}`
+            : baseSubtext;
 
           return (
             <Swipeable

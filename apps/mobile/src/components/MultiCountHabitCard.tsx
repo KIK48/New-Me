@@ -13,6 +13,7 @@ interface Props {
   name: string;
   count: number;
   target: number;
+  periodLabel?: string; // e.g. "this week" — shown when count/target spans more than the viewed day
   canLog: boolean; // whether logging is allowed for the date being viewed (not future)
   isMissed: boolean;
   logs: LogEntry[]; // already filtered/sorted for the date being viewed
@@ -28,6 +29,7 @@ export default function MultiCountHabitCard({
   name,
   count,
   target,
+  periodLabel,
   canLog,
   isMissed,
   logs,
@@ -56,9 +58,12 @@ export default function MultiCountHabitCard({
         <Text style={styles.habitName} numberOfLines={1}>
           {name}
         </Text>
-        <Text style={styles.countText}>
-          {count}/{target}
-        </Text>
+        <View style={styles.countCol}>
+          <Text style={styles.countText}>
+            {count}/{target}
+          </Text>
+          {periodLabel && <Text style={styles.periodText}>{periodLabel}</Text>}
+        </View>
       </View>
 
       <AnimatedProgressBar pct={barPct} trackStyle={styles.barTrack} fillStyle={styles.barFill} />
@@ -133,6 +138,14 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     color: "#98eaff",
+  },
+  countCol: {
+    alignItems: "flex-end",
+  },
+  periodText: {
+    fontSize: 10,
+    color: "#3a7a5a",
+    marginTop: 1,
   },
   countText: {
     fontSize: 14,

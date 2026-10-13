@@ -4,6 +4,7 @@ import { MONTH_ABBR, addDays, localDateOf, todayISO } from "../../utils/dates";
 import { CheckIcon, XIcon } from "../../components/HabitIcons";
 import PopOnChange from "../../components/PopOnChange";
 import MultiCountHabitCard from "../../components/MultiCountHabitCard";
+import { countInPeriod, dayCounts, periodWord, usesLogs } from "../../utils/periods";
 import { DayStatus, Habit, HabitLogEntry, StatusMap } from "./types";
 
 interface Props {
@@ -14,7 +15,7 @@ interface Props {
   onPrevYear: () => void;
   onNextYear: () => void;
   onCheckIn: (habitId: string, dateISO: string, next: DayStatus) => void;
-  onAddLog: (habitId: string) => void;
+  onAddLog: (habitId: string, dayISO: string) => void; // logs against the day-cursor date
   onDeleteLog: (logId: string) => void;
 }
 
@@ -108,7 +109,7 @@ export default function YearlyView({
           renderItem={({ item }) => {
             const target = item.frequencyCount ?? 1;
 
-            if (target > 1) {
+            if (usesLogs(item.frequencyType, target)) {
               const dayLogs = logsForHabitOnDate(item.id).sort((a, b) =>
                 a.loggedAt < b.loggedAt ? 1 : -1,
               );
@@ -117,12 +118,13 @@ export default function YearlyView({
               return (
                 <MultiCountHabitCard
                   name={item.name}
-                  count={dayLogs.length}
+                  count={countInPeriod(dayCounts(item.id, logs, statuses[item.id]), "YEARLY", logDateISO)}
                   target={target}
+                  periodLabel={periodWord("YEARLY")}
                   canLog={canLog}
                   isMissed={isMissed}
                   logs={dayLogs}
-                  onAddLog={() => onAddLog(item.id)}
+                  onAddLog={() => onAddLog(item.id, logDateISO)}
                   onDeleteLog={onDeleteLog}
                   onToggleMissed={() =>
                     onCheckIn(item.id, logDateISO, isMissed ? "UNSET" : "MISSED")

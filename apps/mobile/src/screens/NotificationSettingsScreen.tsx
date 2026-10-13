@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   },
   addBtnText: { fontSize: 14, color: "#98FF9D" },
   modalRoot: { flex: 1, justifyContent: "flex-end" },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)" },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(0,0,0,0.6)" },
   card: {
     backgroundColor: "#05170e",
     borderTopLeftRadius: 24,

@@ -33,7 +33,8 @@
         {
           "color": "#009951"
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "extra": {
       "eas": {

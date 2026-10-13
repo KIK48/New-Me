@@ -5,6 +5,8 @@ import AnimatedProgressBar from "../../components/AnimatedProgressBar";
 import MultiCountHabitCard from "../../components/MultiCountHabitCard";
 import { localDateOf, todayISO } from "../../utils/dates";
 import { DayStatus, Habit, HabitLogEntry, StatusMap } from "./types";
+import { BORDER, BORDER_DONE, BORDER_MISSED } from "../../theme";
+import { slideIn } from "../../components/SlideInView";
 
 interface Props {
   dateISO: string;
@@ -82,7 +84,8 @@ export default function DailyView({
         data={habits}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) =>
+          slideIn(index, () => {
           const target = item.frequencyCount ?? 1;
 
           if (target > 1) {
@@ -112,7 +115,7 @@ export default function DailyView({
 
           return (
             <TouchableOpacity
-              style={styles.habitCard}
+              style={[styles.habitCard, status === "MISSED" && styles.cardMissed, status === "DONE" && styles.cardDone]}
               onPress={() => onCheckIn(item.id, status === "DONE" ? "UNSET" : "DONE")}
             >
               <View
@@ -152,16 +155,22 @@ export default function DailyView({
               </TouchableOpacity>
             </TouchableOpacity>
           );
-        }}
+          })
+        }
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Outline turns light green once the habit is completed
+  cardDone: { borderColor: BORDER_DONE },
+  cardMissed: { borderColor: BORDER_MISSED },
   wrap: { flex: 1 },
   dateCard: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 16,
     marginHorizontal: 16,
     marginBottom: 12,
@@ -223,6 +232,8 @@ const styles = StyleSheet.create({
   },
   habitCard: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 14,
     padding: 12,
     flexDirection: "row",

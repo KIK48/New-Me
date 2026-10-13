@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Alert,
   Animated,
+  RefreshControl,
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import React, { useState, useEffect } from "react";
@@ -20,6 +21,8 @@ import AnimatedProgressBar from "../components/AnimatedProgressBar";
 import MultiCountHabitCard from "../components/MultiCountHabitCard";
 import { localDateOf } from "../utils/dates";
 import { countInPeriod, dayCounts, periodWord, usesLogs } from "../utils/periods";
+import { BORDER, BORDER_DONE, BORDER_MISSED } from "../theme";
+import { slideIn } from "../components/SlideInView";
 
 // HabitsScreen lives inside the tab navigator, but CreateHabit/EditHabit
 // are on the parent AppStack — useNavigation gives access to the full stack
@@ -42,6 +45,8 @@ export default function HabitsScreen() {
   // reading the same HabitDay data the Calendar writes.
   const [allStatuses, setAllStatuses] = useState<Record<string, Record<string, DayStatus>>>({});
   const [logs, setLogs] = useState<HabitLogEntry[]>([]);
+  const [loaded, setLoaded] = useState(false); // gates the empty state so it doesn't flash before data arrives
+  const [refreshing, setRefreshing] = useState(false);
   const todayStatuses: Record<string, DayStatus> = {};
   Object.keys(allStatuses).forEach((id) => {
     todayStatuses[id] = allStatuses[id]?.[todayISO()] ?? "UNSET";
@@ -70,9 +75,8 @@ export default function HabitsScreen() {
   // Refetch when token loads OR screen gains focus.
   // useIsFocused + useEffect handles both: navigation events AND app restarts where
   // the screen is already focused when the token loads from SecureStore.
-  useEffect(() => {
-    if (!token || !isFocused) return;
-    Promise.all([
+  function loadData() {
+    return Promise.all([
       authorizedFetch(`${API_URL}/habits`).then((r) => r.json()),
       authorizedFetch(`${API_URL}/habit-days`).then((r) => r.json()),
       authorizedFetch(`${API_URL}/habit-logs`).then((r) => r.json()),
@@ -91,8 +95,22 @@ export default function HabitsScreen() {
         setAllStatuses(map);
         setLogs(Array.isArray(logsData) ? logsData : []);
       })
-      .catch((err) => console.log("fetch error:", err));
+      .catch((err) => console.log("fetch error:", err))
+      // Even a failed first fetch counts as "loaded" — otherwise a flaky network
+      // would leave the list stuck with no empty state or retry hint
+      .finally(() => setLoaded(true));
+  }
+
+  useEffect(() => {
+    if (!token || !isFocused) return;
+    loadData();
   }, [token, isFocused]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }
 
   // Completions in the habit's current period (today / this week / month / year),
   // counting both logs and legacy checkmarks — the same number the Calendar shows.
@@ -276,6 +294,23 @@ export default function HabitsScreen() {
         data={habits}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#98FF9D"
+          />
+        }
+        ListHeaderComponent={
+          loaded && habits.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>No habits yet</Text>
+              <Text style={styles.emptyText}>
+                Start with one small thing you want to do every day. You can add more later.
+              </Text>
+            </View>
+          ) : null
+        }
         ListFooterComponent={
           <TouchableOpacity
             style={styles.skeletonCard}
@@ -285,7 +320,8 @@ export default function HabitsScreen() {
             <Text style={styles.skeletonText}>Add new habit</Text>
           </TouchableOpacity>
         }
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) =>
+          slideIn(index, () => {
           const target = item.frequencyCount ?? 1;
 
           if (usesLogs(item.frequencyType, target)) {
@@ -357,7 +393,7 @@ export default function HabitsScreen() {
                 style={{ transform: [{ scale: getCardScale(item.id) }] }}
               >
                 <TouchableOpacity
-                  style={styles.habitCard}
+                  style={[styles.habitCard, status === "MISSED" && styles.cardMissed, status === "DONE" && styles.cardDone]}
                   onPress={() => handleCardPress(item.id)}
                   onPressIn={() => bounceCard(item.id, 0.97)}
                   onPressOut={() => bounceCard(item.id, 1)}
@@ -408,7 +444,7 @@ export default function HabitsScreen() {
                       styles.missedBtn,
                       status === "MISSED" && styles.missedBtnActive,
                     ]}
-                    onPress={() => handleToggleMissed(item.id)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={() => handleToggleMissed(item.id)}
                   >
                     <Text
                       style={[
@@ -423,13 +459,17 @@ export default function HabitsScreen() {
               </Animated.View>
             </Swipeable>
           );
-        }}
+          })
+        }
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Outline turns light green once the habit is completed
+  cardDone: { borderColor: BORDER_DONE },
+  cardMissed: { borderColor: BORDER_MISSED },
   container: {
     flex: 1,
     backgroundColor: "#000603",
@@ -489,6 +529,8 @@ const styles = StyleSheet.create({
   },
   progressCard: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 16,
     padding: 20,
     marginHorizontal: 20,
@@ -532,6 +574,8 @@ const styles = StyleSheet.create({
   },
   habitCard: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 16,
     padding: 14,
     flexDirection: "row",
@@ -589,6 +633,22 @@ const styles = StyleSheet.create({
   },
   missedBtnTextActive: {
     color: "#ff5555",
+  },
+  emptyState: {
+    paddingVertical: 24,
+    paddingHorizontal: 8,
+    alignItems: "center",
+  },
+  emptyTitle: {
+    fontSize: 17,
+    color: "#98eaff",
+    marginBottom: 6,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: "#3a7a5a",
+    textAlign: "center",
+    lineHeight: 20,
   },
   skeletonCard: {
     borderRadius: 16,

@@ -6,6 +6,8 @@ import PopOnChange from "../../components/PopOnChange";
 import MultiCountHabitCard from "../../components/MultiCountHabitCard";
 import { countInPeriod, dayCounts, periodWord, usesLogs } from "../../utils/periods";
 import { DayStatus, Habit, HabitLogEntry, StatusMap } from "./types";
+import { BORDER, BORDER_DONE, BORDER_MISSED } from "../../theme";
+import { slideIn } from "../../components/SlideInView";
 
 interface Props {
   year: number;
@@ -104,7 +106,8 @@ export default function MonthlyView({
           data={habits}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) =>
+            slideIn(index, () => {
             const target = item.frequencyCount ?? 1;
 
             if (usesLogs(item.frequencyType, target)) {
@@ -138,7 +141,7 @@ export default function MonthlyView({
             const logDateStatus = statuses[item.id]?.[logDateISO] ?? "UNSET";
 
             return (
-              <View style={styles.card}>
+              <View style={[styles.card, logDateStatus === "MISSED" && styles.cardMissed, count >= target && styles.cardDone]}>
                 <View style={styles.cardTop}>
                   <TouchableOpacity
                     disabled={!canLog}
@@ -183,7 +186,8 @@ export default function MonthlyView({
                 )}
               </View>
             );
-          }}
+            })
+          }
         />
       )}
     </View>
@@ -191,6 +195,9 @@ export default function MonthlyView({
 }
 
 const styles = StyleSheet.create({
+  // Outline turns light green once the habit is completed
+  cardDone: { borderColor: BORDER_DONE },
+  cardMissed: { borderColor: BORDER_MISSED },
   wrap: { flex: 1 },
   navRow: {
     flexDirection: "row",
@@ -264,6 +271,8 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 16,
     padding: 16,
     shadowColor: "#000",

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { CheckIcon, XIcon } from "./HabitIcons";
 import AnimatedProgressBar from "./AnimatedProgressBar";
 import { formatTime } from "../utils/dates";
+import { BORDER, BORDER_DONE, BORDER_MISSED } from "../theme";
 
 interface LogEntry {
   id: string;
@@ -41,7 +42,7 @@ export default function MultiCountHabitCard({
   const isFullyDone = count >= target;
 
   return (
-    <View style={styles.multiCard}>
+    <View style={[styles.multiCard, isMissed && styles.cardMissed, isFullyDone && styles.cardDone]}>
       <View style={styles.cardTop}>
         <TouchableOpacity
           disabled={!canLog}
@@ -73,7 +74,7 @@ export default function MultiCountHabitCard({
           {logs.map((log) => (
             <View key={log.id} style={styles.logRow}>
               <Text style={styles.logTime}>{formatTime(log.loggedAt)}</Text>
-              <TouchableOpacity onPress={() => onDeleteLog(log.id)}>
+              <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={() => onDeleteLog(log.id)}>
                 <Text style={styles.logRemove}>Remove</Text>
               </TouchableOpacity>
             </View>
@@ -89,7 +90,7 @@ export default function MultiCountHabitCard({
         )}
         <TouchableOpacity
           style={[styles.missedBtn, isMissed && styles.missedBtnActive]}
-          onPress={onToggleMissed}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={onToggleMissed}
         >
           <Text style={[styles.missedBtnText, isMissed && styles.missedBtnTextActive]}>
             {isMissed ? "Undo" : "Missed"}
@@ -101,8 +102,13 @@ export default function MultiCountHabitCard({
 }
 
 const styles = StyleSheet.create({
+  // Outline turns light green once the habit is completed
+  cardDone: { borderColor: BORDER_DONE },
+  cardMissed: { borderColor: BORDER_MISSED },
   multiCard: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 14,
     padding: 14,
     shadowColor: "#000",

@@ -10,6 +10,8 @@ import WeeklyView from "./week/WeeklyView";
 import MonthlyView from "./week/MonthlyView";
 import YearlyView from "./week/YearlyView";
 import { DayStatus, Habit, HabitLogEntry, StatusMap, ViewMode } from "./week/types";
+import { BORDER, PILL_INDICATOR } from "../theme";
+import SlidingIndicator from "../components/SlidingIndicator";
 
 const VIEW_OPTIONS: { key: ViewMode; label: string }[] = [
   { key: "daily", label: "Day" },
@@ -18,11 +20,27 @@ const VIEW_OPTIONS: { key: ViewMode; label: string }[] = [
   { key: "yearly", label: "Year" },
 ];
 
+const SWITCHER_PADDING = 4;
+const SWITCHER_GAP = 4;
+
+const VIEW_EYEBROWS: Record<ViewMode, string> = {
+  daily: "DAILY HABITS",
+  weekly: "WEEKLY HABITS",
+  monthly: "MONTHLY HABITS",
+  yearly: "YEARLY HABITS",
+};
+
 export default function WeekScreen() {
   const { token, authorizedFetch } = useAuth();
   const isFocused = useIsFocused();
 
   const [viewMode, setViewMode] = useState<ViewMode>("weekly");
+  const [switcherWidth, setSwitcherWidth] = useState(0);
+  const activeIndex = VIEW_OPTIONS.findIndex((o) => o.key === viewMode);
+  // Equal-width pills: total row width minus both paddings and the gaps between pills
+  const pillWidth = switcherWidth > 0
+    ? (switcherWidth - SWITCHER_PADDING * 2 - SWITCHER_GAP * (VIEW_OPTIONS.length - 1)) / VIEW_OPTIONS.length
+    : 0;
   const [habits, setHabits] = useState<Habit[]>([]);
   const [statuses, setStatuses] = useState<StatusMap>({});
   const [logs, setLogs] = useState<HabitLogEntry[]>([]);
@@ -157,22 +175,32 @@ export default function WeekScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>CALENDAR</Text>
+        {/* Tells you which habits this view shows, instead of repeating the title */}
+        <Text style={styles.eyebrow}>{VIEW_EYEBROWS[viewMode]}</Text>
         <Text style={styles.title}>Calendar</Text>
       </View>
 
       <View style={styles.viewSwitcher}>
-        {VIEW_OPTIONS.map((opt) => (
-          <TouchableOpacity
-            key={opt.key}
-            style={[styles.viewPill, viewMode === opt.key && styles.viewPillActive]}
-            onPress={() => setViewMode(opt.key)}
-          >
-            <Text style={[styles.viewPillText, viewMode === opt.key && styles.viewPillTextActive]}>
-              {opt.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {/* Row is measured (not the bordered outer view) so pill widths exclude the border */}
+        <View style={styles.viewSwitcherRow} onLayout={(e) => setSwitcherWidth(e.nativeEvent.layout.width)}>
+          {pillWidth > 0 && (
+            <SlidingIndicator
+              x={SWITCHER_PADDING + activeIndex * (pillWidth + SWITCHER_GAP)}
+              style={[styles.pillIndicator, { width: pillWidth }]}
+            />
+          )}
+          {VIEW_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.key}
+              style={styles.viewPill}
+              onPress={() => setViewMode(opt.key)}
+            >
+              <Text style={[styles.viewPillText, viewMode === opt.key && styles.viewPillTextActive]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       {viewMode === "daily" && (
@@ -259,22 +287,30 @@ const styles = StyleSheet.create({
     color: "#98FF9D",
   },
   viewSwitcher: {
-    flexDirection: "row",
     marginHorizontal: 16,
     marginBottom: 14,
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 14,
-    padding: 4,
-    gap: 4,
+  },
+  viewSwitcherRow: {
+    flexDirection: "row",
+    padding: SWITCHER_PADDING,
+    gap: SWITCHER_GAP,
+  },
+  // Sits behind the pills and glides to the selected one (width is set from the measured row)
+  pillIndicator: {
+    top: SWITCHER_PADDING,
+    bottom: SWITCHER_PADDING,
+    borderRadius: 10,
+    backgroundColor: PILL_INDICATOR,
   },
   viewPill: {
     flex: 1,
     paddingVertical: 8,
     borderRadius: 10,
     alignItems: "center",
-  },
-  viewPillActive: {
-    backgroundColor: "#009951",
   },
   viewPillText: {
     fontSize: 13,

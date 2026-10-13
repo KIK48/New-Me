@@ -5,6 +5,8 @@ import { CheckIcon, XIcon } from "../../components/HabitIcons";
 import AnimatedProgressBar from "../../components/AnimatedProgressBar";
 import { dayCounts, usesLogs } from "../../utils/periods";
 import { DayStatus, Habit, HabitLogEntry, StatusMap } from "./types";
+import { BORDER, BORDER_DONE } from "../../theme";
+import { slideIn } from "../../components/SlideInView";
 
 const DAY_LABELS = ["M", "Tu", "W", "Th", "F", "Sa", "Su"];
 const CELL_SIZE = 34;
@@ -100,14 +102,15 @@ export default function WeeklyView({
           data={habits}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) =>
+            slideIn(index, () => {
             const target = item.frequencyCount ?? 1;
             const count = doneThisWeek(item.id);
             const counts = dayCounts(item.id, logs, statuses[item.id]);
             const barPct = Math.min(Math.round((count / target) * 100), 100);
 
             return (
-              <View style={styles.habitCard}>
+              <View style={[styles.habitCard, count >= target && styles.cardDone]}>
                <View style={styles.habitRow}>
                 <View style={styles.habitNameCol}>
                   <Text style={styles.habitName} numberOfLines={1}>
@@ -152,7 +155,8 @@ export default function WeeklyView({
                 />
               </View>
             );
-          }}
+            })
+          }
         />
       )}
     </View>
@@ -160,9 +164,13 @@ export default function WeeklyView({
 }
 
 const styles = StyleSheet.create({
+  // Outline turns light green once the habit is completed
+  cardDone: { borderColor: BORDER_DONE },
   wrap: { flex: 1 },
   dateCard: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 16,
     marginHorizontal: 16,
     marginBottom: 12,
@@ -249,6 +257,8 @@ const styles = StyleSheet.create({
   },
   habitCard: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,

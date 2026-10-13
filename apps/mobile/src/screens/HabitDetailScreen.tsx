@@ -14,6 +14,7 @@ import { AppStack } from "../navigation/types";
 import { API_URL } from "../api/client";
 import { todayISO, addDays } from "../utils/dates";
 import { calculateStreak } from "../utils/streak";
+import { BORDER } from "../theme";
 
 type Props = NativeStackScreenProps<AppStack, "HabitDetail">;
 type DayStatus = "UNSET" | "DONE" | "MISSED";
@@ -231,6 +232,8 @@ const styles = StyleSheet.create({
   statCard: {
     width: "47.5%",
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 16,
     padding: 14,
     alignItems: "center",
@@ -253,6 +256,8 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: "#085331",
+    borderWidth: 1,
+    borderColor: BORDER,
     borderRadius: 16,
     padding: 16,
     shadowColor: "#000",

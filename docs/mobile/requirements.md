@@ -30,7 +30,17 @@ Stack: React Native
 | Home screen redesign (swipe-to-delete, +/- modes) | ✅ Done |
 | Home → Dashboard restructure | ❌ Not built |
 | Profile → Account settings | ❌ Not built |
-| Animations | ❌ Not built |
+| Animations | 🟡 In progress (v1.4.0: progress bars, tab/view sliding highlights, habit card entrance) |
+| Skeleton loading state | ❌ Planned (see below) |
+
+## Planned
+
+### Skeleton loading state
+When a user logs in (or opens the app) and data takes a moment to arrive, show a **skeleton of the screen's layout** instead of an empty screen: greyed placeholder shapes where the progress card, habit cards, and (on Calendar) the date/view cards will be, replaced by the real content once the fetch finishes.
+
+- **Why:** today Home, Calendar and Profile render empty until the three parallel fetches (`/habits`, `/habit-days`, `/habit-logs`) return. On a slow connection or a cold Render start (free tier can take up to a minute to wake) the app looks broken rather than loading.
+- **Scope:** only shown when loading takes noticeable time, so a fast response doesn't flash a skeleton. Applies to Home, Calendar (all four views) and Profile.
+- **Shape:** placeholders mirror the real cards (same size, radius, border) with a subtle pulse, using the existing design-system colors.
 
 ## Endpoint Verification Audit (Story #28)
 
